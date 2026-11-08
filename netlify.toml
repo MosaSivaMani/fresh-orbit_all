@@ -1,0 +1,2 @@
+[build]
+  publish = "firebase-project/public"
