@@ -255,6 +255,7 @@ function renderDrawer() {
   if ($('coForm')) readForm();   // keep typed details when settings/products re-render the drawer
   const key = focusKey(document.activeElement);
   drawDrawer();
+  mountMap();
   restoreFocus(key);
 }
 function drawDrawer() {
@@ -335,18 +336,94 @@ function drawDrawer() {
 }
 /* ====== customer location (optional) ====== */
 // Kept in memory only (not saved in the browser), so an old location is never reused by mistake.
-let geo = null, geoState = '', geoMsg = '';
+// geo = { lat, lng, acc? }: acc is present only for a GPS fix; a pin placed by hand has none.
+let geo = null, geoState = '', geoMsg = '', pickOpen = false;
 const mapsUrl = (g) => `https://maps.google.com/?q=${g.lat},${g.lng}`;
+const distTxt = (m) => m > 999 ? Math.round(m / 1000) + ' km' : m + ' m';
 function locHTML() {
-  if (geo) {
-    return `<div class="loc-box ok" role="status"><span>📍 <b>Location added</b>${geo.acc ? ` <small>(within about ${geo.acc > 999 ? Math.round(geo.acc / 1000) + ' km' : geo.acc + ' m'})</small>` : ''}</span>
-      <span class="loc-act"><a href="${esc(mapsUrl(geo))}" target="_blank" rel="noopener">Check on map</a><button type="button" data-act="locrm">Remove</button></span></div>`;
-  }
   const busy = geoState === 'busy';
+  const gpsBtn = `<button type="button" class="loc-btn" data-act="loc" ${busy ? 'disabled' : ''}>📍 ${busy ? 'Finding your location…' : 'Use my current location'}</button>`;
+  const err = geoState === 'err' ? `<em class="err">${esc(geoMsg)}</em>` : '';
+  if (geo || pickOpen) {
+    const status = !geo ? 'Tap the map at your house'
+      : geo.acc ? `Pin set from your phone <small>(within about ${distTxt(geo.acc)})</small>` : 'Pin set by you';
+    return `<div class="loc-box ok">
+      <div class="loc-head"><span role="status">📍 <b>${status}</b></span>
+        <span class="loc-act">${geo ? `<a href="${esc(mapsUrl(geo))}" target="_blank" rel="noopener">Google Maps</a>` : ''}<button type="button" data-act="locrm">${geo ? 'Remove' : 'Cancel'}</button></span></div>
+      <div id="locMapSlot" class="loc-map" aria-label="Map: drag the pin or tap to move it"></div>
+      <small>Drag the pin, or tap the map, to put it exactly on your house. Pinch to zoom.</small>
+      ${geo ? '' : gpsBtn}${err}</div>`;
+  }
   return `<div class="loc-box">
-    <button type="button" class="loc-btn" data-act="loc" ${busy ? 'disabled' : ''}>📍 ${busy ? 'Finding your location…' : 'Use my current location'}</button>
-    <small>Optional. Helps the delivery person find you. Tap only when you are at the delivery address.</small>
-    ${geoState === 'err' ? `<em class="err">${esc(geoMsg)}</em>` : ''}</div>`;
+    <div class="loc-btns">${gpsBtn}<button type="button" class="loc-btn" data-act="pick">🗺️ Pick on map</button></div>
+    <small>Optional. Helps the delivery person find your house. “Current location” works when you are at home; otherwise pick it on the map.</small>
+    ${err}</div>`;
+}
+
+/* Map pin (OpenStreetMap via Leaflet, loaded only when needed). The map element is kept
+   between drawer redraws, so the map does not reload every time the customer taps something. */
+const KAKINADA = { lat: 16.9891, lng: 82.2475 };
+const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+let leafletP = null, lMap = null, lPin = null, mapEl = null, centeredOn = null;
+function loadLeaflet() {
+  if (window.L && window.L.map) return Promise.resolve(window.L);
+  if (!leafletP) {
+    leafletP = new Promise((resolve, reject) => {
+      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = LEAFLET + 'leaflet.css';
+      document.head.appendChild(css);
+      const sc = document.createElement('script'); sc.src = LEAFLET + 'leaflet.js'; sc.async = true;
+      sc.onload = () => (window.L && window.L.map ? resolve(window.L) : reject(new Error('Map library missing')));
+      sc.onerror = () => { leafletP = null; reject(new Error('Map library failed to load')); };
+      document.head.appendChild(sc);
+    });
+  }
+  return leafletP;
+}
+function destroyMap() {
+  if (lMap) { try { lMap.remove(); } catch (e) {} }
+  lMap = lPin = mapEl = centeredOn = null;
+}
+function placePin(ll) {
+  geo = { lat: +ll.lat.toFixed(6), lng: +ll.lng.toFixed(6) };   // placed by hand: no accuracy
+  geoState = 'ok'; centeredOn = geo;
+  rerenderCheckout();
+}
+function syncPin(L) {
+  if (!lMap) return;
+  if (!geo) { if (lPin) { lMap.removeLayer(lPin); lPin = null; } return; }
+  const at = [geo.lat, geo.lng];
+  if (!lPin) {
+    const icon = L.divIcon({ className: 'fo-pin', html: '<span></span>', iconSize: [30, 30], iconAnchor: [15, 29] });   // anchor = tip of the pin
+    lPin = L.marker(at, { draggable: true, icon, keyboard: false }).addTo(lMap);
+    lPin.on('dragend', () => placePin(lPin.getLatLng()));
+  } else lPin.setLatLng(at);
+  // Re-centre only when the location came from somewhere else (e.g. GPS), not after the customer moved the pin.
+  if (centeredOn !== geo) { lMap.setView(at, Math.max(lMap.getZoom(), 17)); centeredOn = geo; }
+}
+function mountMap() {
+  const slot = $('locMapSlot');
+  if (!slot) { if (!geo && !pickOpen) destroyMap(); return; }
+  if (mapEl) {                      // reuse the live map
+    slot.replaceWith(mapEl);
+    if (lMap) { lMap.invalidateSize(); syncPin(window.L); }
+    return;
+  }
+  mapEl = slot;
+  loadLeaflet().then((L) => {
+    if (mapEl !== slot || lMap) return;
+    const c = geo || KAKINADA;
+    lMap = L.map(mapEl, { scrollWheelZoom: false }).setView([c.lat, c.lng], geo ? 17 : 13);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(lMap);
+    lMap.on('click', (e) => placePin(e.latlng));
+    centeredOn = geo;
+    syncPin(L);
+    setTimeout(() => lMap && lMap.invalidateSize(), 150);
+  }).catch((e) => {
+    console.warn(e);
+    destroyMap(); pickOpen = false;
+    geoState = 'err'; geoMsg = 'The map could not load. Use your current location or just type your address.';
+    rerenderCheckout();
+  });
 }
 function rerenderCheckout() { if (view === 'checkout') { readForm(); renderDrawer(); } }
 function getLocation() {
@@ -356,7 +433,7 @@ function getLocation() {
   geoState = 'busy'; rerenderCheckout();
   navigator.geolocation.getCurrentPosition((p) => {
     geo = { lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6), acc: Math.round(p.coords.accuracy || 0) };
-    geoState = 'ok'; rerenderCheckout();
+    geoState = 'ok'; pickOpen = true; rerenderCheckout();   // show the map so the pin can be fine-tuned
   }, (e) => {
     geoState = 'err';
     geoMsg = e && e.code === 1 ? 'Location permission is blocked. Allow it in your browser settings, or just type your address.'
@@ -496,7 +573,7 @@ document.addEventListener('click', (e) => {
     // Open WhatsApp inside the tap so browsers allow it; save to the inbox in the background.
     window.open(waLink(o.msg, o.wa), '_blank', 'noopener');
     cart = []; save();   // the cart is done; form details stay remembered
-    geo = null; geoState = '';
+    geo = null; geoState = ''; pickOpen = false; destroyMap();
     view = 'sent'; sending = false;
     renderDrawer(); renderGroups(); renderBar();
     saveOrder(o).then((ok) => {
@@ -507,7 +584,8 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (act === 'loc') { getLocation(); return; }
-  if (act === 'locrm') { geo = null; geoState = ''; rerenderCheckout(); return; }
+  if (act === 'pick') { geoState = ''; pickOpen = true; rerenderCheckout(); return; }
+  if (act === 'locrm') { geo = null; geoState = ''; pickOpen = false; destroyMap(); rerenderCheckout(); return; }
   if (act === 'copy') { copyText(lastOrder ? lastOrder.msg : '', $('msgBox'), 'Order message copied'); return; }
   if (act === 'copyupi') { copyText(lastOrder ? lastOrder.upi : upiId(), $('upiId'), 'UPI ID copied'); return; }
   if (act === 'qr') {
