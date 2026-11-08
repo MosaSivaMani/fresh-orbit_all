@@ -295,6 +295,7 @@ function drawDrawer() {
       <label class="field"><span>Phone</span><span class="phone"><b>+91</b><input id="fPhone" type="tel" inputmode="numeric" maxlength="16" autocomplete="tel-national" value="${esc(form.phone)}" placeholder="10-digit mobile"></span><em class="err" id="ePhone" hidden>Enter a 10-digit mobile number.</em></label>
       <div class="field"><span>Area · delivery charge</span><div class="area-pick">${SETTINGS.areas.map((a) => `<button type="button" aria-pressed="${a.name === form.area}" data-area="${esc(a.name)}">${esc(a.name)}<b>${rupee(a.fee)}</b></button>`).join('')}</div><em class="err" id="eArea" hidden>Choose your area.</em></div>
       <label class="field"><span>Address</span><textarea id="fAddr" rows="3" maxlength="400" autocomplete="street-address" placeholder="Door no, street, landmark">${esc(form.address)}</textarea><em class="err" id="eAddr" hidden>Enter your address.</em></label>
+      ${locHTML()}
       <div class="field"><span>Delivery time</span>
         <div class="seg day-seg" role="group" aria-label="Delivery day" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button type="button" aria-pressed="${day === 'today'}" data-day="today" ${noToday ? 'disabled' : ''}>Today</button><button type="button" aria-pressed="${day === 'tomorrow'}" data-day="tomorrow">Tomorrow</button></div>
         ${noToday && SETTINGS.slots.length ? '<em class="hint">No slots left today, so we’ll deliver tomorrow.</em>' : ''}
@@ -332,6 +333,38 @@ function drawDrawer() {
     if (o.payMethod === 'upi' && !qrFailed && (qrOpen || wideScreen())) showQR();
   }
 }
+/* ====== customer location (optional) ====== */
+// Kept in memory only (not saved in the browser), so an old location is never reused by mistake.
+let geo = null, geoState = '', geoMsg = '';
+const mapsUrl = (g) => `https://maps.google.com/?q=${g.lat},${g.lng}`;
+function locHTML() {
+  if (geo) {
+    return `<div class="loc-box ok" role="status"><span>📍 <b>Location added</b>${geo.acc ? ` <small>(within about ${geo.acc > 999 ? Math.round(geo.acc / 1000) + ' km' : geo.acc + ' m'})</small>` : ''}</span>
+      <span class="loc-act"><a href="${esc(mapsUrl(geo))}" target="_blank" rel="noopener">Check on map</a><button type="button" data-act="locrm">Remove</button></span></div>`;
+  }
+  const busy = geoState === 'busy';
+  return `<div class="loc-box">
+    <button type="button" class="loc-btn" data-act="loc" ${busy ? 'disabled' : ''}>📍 ${busy ? 'Finding your location…' : 'Use my current location'}</button>
+    <small>Optional. Helps the delivery person find you. Tap only when you are at the delivery address.</small>
+    ${geoState === 'err' ? `<em class="err">${esc(geoMsg)}</em>` : ''}</div>`;
+}
+function rerenderCheckout() { if (view === 'checkout') { readForm(); renderDrawer(); } }
+function getLocation() {
+  if (!navigator.geolocation || !window.isSecureContext) {
+    geoState = 'err'; geoMsg = 'Location is not available here. Please type your address.'; rerenderCheckout(); return;
+  }
+  geoState = 'busy'; rerenderCheckout();
+  navigator.geolocation.getCurrentPosition((p) => {
+    geo = { lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6), acc: Math.round(p.coords.accuracy || 0) };
+    geoState = 'ok'; rerenderCheckout();
+  }, (e) => {
+    geoState = 'err';
+    geoMsg = e && e.code === 1 ? 'Location permission is blocked. Allow it in your browser settings, or just type your address.'
+      : 'Could not get your location. Try again, or just type your address.';
+    rerenderCheckout();
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+}
+
 function readForm() {
   const v = (id) => ($(id) ? $(id).value : null);
   if (v('fName') !== null) form.name = v('fName').trim();
@@ -361,10 +394,11 @@ function buildOrder() {
   const ref = newRef(), payMethod = form.pay === 'upi' ? 'upi' : 'cod';
   const slot = ((dayNow() === 'tomorrow' ? 'Tomorrow' : 'Today') + ' · ' + form.slot).slice(0, 40);
   const lines = items.map((it) => `• ${it.en}${it.te ? ' (' + it.te + ')' : ''} — ${kg(it.qty)}${it.cut ? ', ' + it.cut : ''} — ${rupee(it.amount)}`);
-  const msg = `New order — Fresh Orbit\nOrder: ${ref}\n\n${lines.join('\n')}\n\nItems: ${rupee(s)}\nDelivery (${form.area}): ${d ? rupee(d) : 'Free'}\nTotal: ${rupee(total)}\nPayment: ${payMethod === 'upi' ? 'UPI now' : 'on delivery'}\n\nName: ${form.name}\nPhone: +91 ${form.phone}\nAddress: ${form.address}, ${form.area}\nTime: ${slot}${form.note ? '\nNote: ' + form.note : ''}`;
+  const msg = `New order — Fresh Orbit\nOrder: ${ref}\n\n${lines.join('\n')}\n\nItems: ${rupee(s)}\nDelivery (${form.area}): ${d ? rupee(d) : 'Free'}\nTotal: ${rupee(total)}\nPayment: ${payMethod === 'upi' ? 'UPI now' : 'on delivery'}\n\nName: ${form.name}\nPhone: +91 ${form.phone}\nAddress: ${form.address}, ${form.area}${geo ? '\nLocation: ' + mapsUrl(geo) : ''}\nTime: ${slot}${form.note ? '\nNote: ' + form.note : ''}`;
   return {
     ref, items, subtotal: s, delivery: d, total, payMethod, slot, msg,
     name: form.name.slice(0, 80), phone: form.phone, area: form.area.slice(0, 80), address: form.address.slice(0, 400), note: form.note.slice(0, 300),
+    loc: geo ? { ...geo } : null,
     upi: upiId(), wa: waDigits(), waShown: waPretty(), saveFailed: false
   };
 }
@@ -414,6 +448,7 @@ async function saveOrder(o) {
       status: 'new', createdAt: fs.serverTimestamp(), ref: o.ref, payMethod: o.payMethod, payStatus: 'unpaid'
     };
     if (o.note) doc.note = o.note;
+    if (o.loc) doc.loc = o.loc;
     // addDoc waits for the server; if the phone is offline treat it as not saved (WhatsApp still has the order).
     const timeout = new Promise((resolve) => setTimeout(() => resolve('timeout'), 12000));
     const r = await Promise.race([fs.addDoc(fs.collection(db, 'orders'), doc), timeout]);
@@ -461,6 +496,7 @@ document.addEventListener('click', (e) => {
     // Open WhatsApp inside the tap so browsers allow it; save to the inbox in the background.
     window.open(waLink(o.msg, o.wa), '_blank', 'noopener');
     cart = []; save();   // the cart is done; form details stay remembered
+    geo = null; geoState = '';
     view = 'sent'; sending = false;
     renderDrawer(); renderGroups(); renderBar();
     saveOrder(o).then((ok) => {
@@ -470,6 +506,8 @@ document.addEventListener('click', (e) => {
     });
     return;
   }
+  if (act === 'loc') { getLocation(); return; }
+  if (act === 'locrm') { geo = null; geoState = ''; rerenderCheckout(); return; }
   if (act === 'copy') { copyText(lastOrder ? lastOrder.msg : '', $('msgBox'), 'Order message copied'); return; }
   if (act === 'copyupi') { copyText(lastOrder ? lastOrder.upi : upiId(), $('upiId'), 'UPI ID copied'); return; }
   if (act === 'qr') {

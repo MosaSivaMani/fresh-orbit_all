@@ -15,7 +15,7 @@ const X = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="c
 
 let fb = null;
 let tab = 'orders';
-let orders = [], ordersLoaded = false, orderFilter = 'new';
+let orders = [], ordersLoaded = false, orderFilter = 'new', orderSearch = '', payingUpi = '';
 let seenOrderIds = null;   // ids from earlier snapshots, null until the first one (for the new-order beep)
 let products = [], productsLoaded = false, productsError = null;
 let settings = null, settingsDraft = null, settingsDirty = false, settingsLoaded = false, settingsError = null;
@@ -109,7 +109,8 @@ function resetUserState() {
   productsError = settingsError = null; seenOrderIds = null;
   settingsDraft = null; settingsDirty = false;
   editing = null; draft = null; confirmDelete = false; removingAdmin = '';
-  orderFilter = 'new'; tab = 'orders';
+  orderFilter = 'new'; tab = 'orders'; orderSearch = ''; payingUpi = '';
+  if ($('pane-orders')) $('pane-orders').innerHTML = '';
   document.title = TITLE;
 }
 
@@ -224,17 +225,33 @@ function fmtTime(ts) {
   if (!d) return 'Just now';
   return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 }
+// Search matches the order code, phone, name or UTR. While searching, all orders are searched (filters are ignored).
+const norm = (s) => String(s ?? '').toLowerCase().replace(/[\s-]/g, '');
+function matchesSearch(o, q) {
+  return [o.ref, o.phone, o.name, o.utr].some((v) => norm(v).includes(q));
+}
 function renderOrders(err) {
   const pane = $('pane-orders');
-  if (err) { pane.innerHTML = `<div class="notice">${esc(failMsg(err).replace('Could not save', 'Could not load orders'))}</div>`; return; }
-  if (!ordersLoaded) { pane.innerHTML = '<div class="notice">Loading orders…</div>'; return; }
+  // The search box is created once and kept, so typing is never interrupted when new orders arrive.
+  if (!$('oSearch')) {
+    pane.innerHTML = `<div id="oHead"></div>
+      <label class="search-box"><span class="sr">Search orders</span><input id="oSearch" type="search" autocomplete="off" placeholder="Search code (FO-…), phone, name or UTR" value="${esc(orderSearch)}"></label>
+      <div id="oBody"></div>`;
+  }
+  const head = $('oHead'), body = $('oBody');
+  if (err) { head.innerHTML = ''; body.innerHTML = `<div class="notice">${esc(failMsg(err).replace('Could not save', 'Could not load orders'))}</div>`; return; }
+  if (!ordersLoaded) { head.innerHTML = ''; body.innerHTML = '<div class="notice">Loading orders…</div>'; return; }
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todays = orders.filter((o) => o.createdAt && o.createdAt.toDate && o.createdAt.toDate() >= today && o.status !== 'cancelled');
   const counts = Object.fromEntries(STATUS.map((s) => [s, orders.filter((o) => o.status === s).length]));
   counts.unpaid = orders.filter(isUnpaid).length;
   const collected = orders.filter((o) => isPaid(o) && paidToday(o, today)).reduce((s, o) => s + (o.total || 0), 0);
-  const list = orderFilter === 'all' ? orders : orderFilter === 'unpaid' ? orders.filter(isUnpaid) : orders.filter((o) => o.status === orderFilter);
-  pane.innerHTML = `
+  const q = norm(orderSearch);
+  const list = q ? orders.filter((o) => matchesSearch(o, q))
+    : orderFilter === 'all' ? orders : orderFilter === 'unpaid' ? orders.filter(isUnpaid) : orders.filter((o) => o.status === orderFilter);
+  // Keep a half-typed UTR when the list redraws.
+  const utrTyped = $('utrIn') ? $('utrIn').value : '';
+  head.innerHTML = `
     <div class="stats">
       <div class="stat"><b>${counts.new}</b><span>New orders</span></div>
       <div class="stat"><b>${todays.length}</b><span>Orders today</span></div>
@@ -242,9 +259,11 @@ function renderOrders(err) {
       <div class="stat"><b>${rupee(collected)}</b><span>Collected today</span></div>
     </div>
     <div class="chips" role="group" aria-label="Filter orders">
-      ${['new', 'confirmed', 'delivered', 'unpaid', 'cancelled', 'all'].map((s) => `<button class="chip" aria-pressed="${s === orderFilter}" data-ofilter="${s}">${s[0].toUpperCase() + s.slice(1)}${s !== 'all' ? ' · ' + counts[s] : ''}</button>`).join('')}
-    </div>
-    ${list.length ? list.map(orderCard).join('') : `<div class="notice">${orderFilter === 'new' ? 'No new orders. New WhatsApp orders from the website appear here.' : orderFilter === 'unpaid' ? 'No unpaid orders.' : 'No orders in this list.'}</div>`}`;
+      ${['new', 'confirmed', 'delivered', 'unpaid', 'cancelled', 'all'].map((s) => `<button class="chip" aria-pressed="${!q && s === orderFilter}" data-ofilter="${s}">${s[0].toUpperCase() + s.slice(1)}${s !== 'all' ? ' · ' + counts[s] : ''}</button>`).join('')}
+    </div>`;
+  body.innerHTML = (q ? `<p class="search-note">${list.length} order${list.length === 1 ? '' : 's'} found for “${esc(orderSearch.trim())}” · <button type="button" class="linkish" data-act="clearsearch">Clear search</button></p>` : '')
+    + (list.length ? list.map(orderCard).join('') : `<div class="notice">${q ? 'No order matches. Only the latest 200 orders are searched.' : orderFilter === 'new' ? 'No new orders. New WhatsApp orders from the website appear here.' : orderFilter === 'unpaid' ? 'No unpaid orders.' : 'No orders in this list.'}</div>`);
+  if (utrTyped && $('utrIn')) $('utrIn').value = utrTyped;
 }
 /* payments: payStatus is 'unpaid' | 'paid_upi' | 'paid_cash' (missing = unpaid); payMethod is 'upi' | 'cod' (missing = unknown) */
 const isPaid = (o) => o.payStatus === 'paid_upi' || o.payStatus === 'paid_cash';
@@ -271,15 +290,51 @@ function payHTML(o) {
   const id = esc(o.id);
   const btns = paid ? `<button class="btn-sm xs" data-opay="unpaid" data-oid="${id}">Undo paid</button>`
     : o.status === 'cancelled' ? ''
-    : `<button class="btn-sm ok" data-opay="paid_upi" data-oid="${id}">Paid UPI</button><button class="btn-sm ok" data-opay="paid_cash" data-oid="${id}">Paid cash</button>`;
-  return `<div class="row-between pay-row"><span class="pay-info">${method ? `<span>Pay: ${method}</span>` : ''}<span class="pay ${paid ? 'pay-ok' : 'pay-due'}">${badge}</span></span>${btns ? `<div class="act-row">${btns}</div>` : ''}</div>`;
+    : `<button class="btn-sm ok" data-utrask="${id}">Paid UPI</button><button class="btn-sm ok" data-opay="paid_cash" data-oid="${id}">Paid cash</button>`;
+  const utrLine = o.utr ? `<div class="utr">UTR <b>${esc(o.utr)}</b></div>` : '';
+  // Paid UPI asks for the UTR / transaction ID first (optional), shown inside the card.
+  const utrForm = payingUpi === o.id && !paid ? `<div class="utr-form">
+      <label class="field"><span>UTR / transaction ID <small>12 digits, from your UPI app (optional)</small></span>
+        <input id="utrIn" inputmode="numeric" autocomplete="off" maxlength="22" placeholder="e.g. 431298765432"></label>
+      <p class="hint">Only press Save after you see ₹${esc(Math.round(o.total || 0))} received in <b>your own</b> UPI app${o.ref ? `, with ${esc(o.ref)} in the note` : ''}. Screenshots can be fake.</p>
+      <div class="form-err" id="utrErr" role="alert"></div>
+      <div class="act-row"><button class="btn-sm" data-act="utrcancel">Cancel</button><button class="btn-sm gold" data-utrsave="${id}">Save as paid by UPI</button></div>
+    </div>` : '';
+  return `<div class="row-between pay-row"><span class="pay-info">${method ? `<span>Pay: ${method}</span>` : ''}<span class="pay ${paid ? 'pay-ok' : 'pay-due'}">${badge}</span></span>${btns && payingUpi !== o.id ? `<div class="act-row">${btns}</div>` : ''}</div>${utrLine}${utrForm}`;
 }
-async function setPay(id, payStatus) {
+async function setPay(id, payStatus, utr) {
   const { fs, db } = fb, paid = payStatus !== 'unpaid';
+  // The UTR is kept only for a UPI payment that has one; every other change clears it.
+  const change = {
+    payStatus,
+    paidAt: paid ? fs.serverTimestamp() : fs.deleteField(),
+    utr: payStatus === 'paid_upi' && utr ? utr : fs.deleteField()
+  };
   try {
-    await fs.updateDoc(fs.doc(db, 'orders', id), { payStatus, paidAt: paid ? fs.serverTimestamp() : fs.deleteField() });
-    toast(payStatus === 'paid_upi' ? 'Marked paid by UPI' : payStatus === 'paid_cash' ? 'Marked paid in cash' : 'Marked not paid');
-  } catch (e) { toast(failMsg(e), true); }
+    await fs.updateDoc(fs.doc(db, 'orders', id), change);
+    payingUpi = '';
+    toast(payStatus === 'paid_upi' ? 'Marked paid by UPI' + (utr ? ' · UTR saved' : '') : payStatus === 'paid_cash' ? 'Marked paid in cash' : 'Marked not paid');
+    return true;
+  } catch (e) { toast(failMsg(e), true); return false; }
+}
+async function saveUtr(id, btn) {
+  const utr = ($('utrIn') ? $('utrIn').value : '').replace(/\s/g, '').toUpperCase();
+  if (utr && !/^[A-Z0-9]{6,22}$/.test(utr)) { $('utrErr').textContent = 'A UTR is usually 12 digits. Check it, or leave it empty.'; return; }
+  const dup = utr && orders.find((x) => x.id !== id && x.utr === utr);
+  if (dup && !btn.dataset.dupok) {
+    $('utrErr').textContent = `This UTR is already saved on order ${dup.ref || dup.name}. One payment can't pay for two orders. Press Save again only if you are sure.`;
+    btn.dataset.dupok = '1'; return;
+  }
+  btn.disabled = true;
+  if (!(await setPay(id, 'paid_upi', utr))) btn.disabled = false;
+}
+// Customer's pinned location (optional): opens Google Maps directions for the delivery person.
+function mapLink(o) {
+  const l = o.loc;
+  if (!l || typeof l.lat !== 'number' || typeof l.lng !== 'number') return '';
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lng}`;
+  const acc = typeof l.acc === 'number' && l.acc > 0 ? ` <small>(±${l.acc > 999 ? Math.round(l.acc / 1000) + ' km' : Math.round(l.acc) + ' m'})</small>` : '';
+  return `<br><a class="maplink" href="${esc(url)}" target="_blank" rel="noopener">📍 Open in Maps</a>${acc}`;
 }
 function orderCard(o) {
   const next = o.status === 'new' ? [['confirmed', 'Confirm'], ['cancelled', 'Cancel']]
@@ -292,7 +347,7 @@ function orderCard(o) {
     <div class="row-between"><div><div class="who">${esc(o.name)}${o.ref ? `<span class="ref">${esc(o.ref)}</span>` : ''}</div><div class="when">${esc(fmtTime(o.createdAt))} · ${esc(o.slot)}</div></div><span class="status st-${esc(o.status)}">${esc(o.status)}</span></div>
     <ul>${(o.items || []).map((it) => `<li><span>${esc(it.en)} · ${kg(it.qty)}${it.cut ? ', ' + esc(it.cut) : ''}</span><span>${rupee(it.amount)}</span></li>`).join('')}
       <li><span>Delivery · ${esc(o.area)}</span><span>${o.delivery ? rupee(o.delivery) : 'Free'}</span></li></ul>
-    <div class="row-between"><span class="addr">${esc(o.address)}, ${esc(o.area)}${o.note ? '<br>Note: ' + esc(o.note) : ''}</span><span class="tot">${rupee(o.total)}</span></div>
+    <div class="row-between"><span class="addr">${esc(o.address)}, ${esc(o.area)}${o.note ? '<br>Note: ' + esc(o.note) : ''}${mapLink(o)}</span><span class="tot">${rupee(o.total)}</span></div>
     ${payHTML(o)}
     <div class="row-between"><span style="font-size:14px;font-weight:700;user-select:all">+91 ${esc(phone)}</span>
       <div class="act-row">
@@ -617,6 +672,10 @@ document.addEventListener('click', async (e) => {
   if (t.dataset.ofilter) { orderFilter = t.dataset.ofilter; renderOrders(); return; }
   if (t.dataset.ostatus) { setStatus(t.dataset.oid, t.dataset.ostatus); return; }
   if (t.dataset.opay) { t.disabled = true; await setPay(t.dataset.oid, t.dataset.opay); t.disabled = false; return; }
+  if (t.dataset.utrask) { payingUpi = t.dataset.utrask; renderOrders(); $('utrIn') && $('utrIn').focus(); return; }
+  if (t.dataset.utrsave) { saveUtr(t.dataset.utrsave, t); return; }
+  if (t.dataset.act === 'utrcancel') { payingUpi = ''; renderOrders(); return; }
+  if (t.dataset.act === 'clearsearch') { orderSearch = ''; if ($('oSearch')) $('oSearch').value = ''; renderOrders(); return; }
   if (t.dataset.stock) {
     const p = products.find((x) => x.id === t.dataset.stock); if (!p) return;
     const on = p.inStock === false;
@@ -665,7 +724,13 @@ document.addEventListener('submit', (e) => {
   if (e.target.id === 'pEditor') { e.preventDefault(); saveEditor(); }
   if (e.target.id === 'adminAdd') { e.preventDefault(); addAdmin(); }
 });
-document.addEventListener('input', (e) => { if (e.target.closest('#pane-delivery')) settingsDirty = true; });
+document.addEventListener('input', (e) => {
+  if (e.target.closest('#pane-delivery')) settingsDirty = true;
+  if (e.target.id === 'oSearch') { orderSearch = e.target.value; renderOrders(); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.id === 'utrIn') { e.preventDefault(); const b = document.querySelector('[data-utrsave]'); b && saveUtr(b.dataset.utrsave, b); }
+});
 document.addEventListener('change', async (e) => {
   const el = e.target;
   if (el.dataset.price) {

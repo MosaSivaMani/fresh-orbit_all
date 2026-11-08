@@ -27,7 +27,9 @@
 |---|---|
 | See new orders, call or WhatsApp the customer | **Orders** (a beep plays and the tab title shows the count when a new order arrives, while the dashboard is open) |
 | Send the customer a confirmation with the total and your UPI ID | **Orders** → **Send confirmation** |
-| Record a payment | **Orders** → **Paid UPI** or **Paid cash**. Check your UPI app first: the website cannot see payments. Customers put the order code (FO-XXXX) in the UPI note. |
+| Record a payment | **Orders** → **Paid UPI** (type the 12-digit UTR from your UPI app, optional) or **Paid cash**. Check your UPI app first: the website cannot see payments. Customers put the order code (FO-XXXX) in the UPI note. |
+| Find an order | **Orders** → search box: order code, phone, name or UTR |
+| Find the customer's house | **Orders** → **📍 Open in Maps** (only when the customer tapped "Use my current location" at checkout) |
 | See who has not paid | **Orders** → **Unpaid** |
 | Change a price | **Products** → type the new price and press Enter |
 | Mark something sold out | **Products** → stock switch off |

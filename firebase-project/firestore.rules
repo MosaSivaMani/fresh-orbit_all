@@ -56,14 +56,25 @@ service cloud.firestore {
       allow read, update, delete: if isOwner();
     }
 
+    // Optional customer location: {lat, lng, acc} taken once at checkout.
+    function validLoc(l) {
+      return l is map
+        && l.keys().hasAll(['lat', 'lng'])
+        && l.keys().hasOnly(['lat', 'lng', 'acc'])
+        && l.lat is number && l.lat >= -90 && l.lat <= 90
+        && l.lng is number && l.lng >= -180 && l.lng <= 180
+        && (!('acc' in l) || (l.acc is number && l.acc >= 0));
+    }
+
     function validNewOrder(o) {
       return o.keys().hasAll(['items', 'subtotal', 'delivery', 'total', 'name', 'phone',
                               'area', 'address', 'slot', 'status', 'createdAt',
                               'ref', 'payMethod', 'payStatus'])
         && o.keys().hasOnly(['items', 'subtotal', 'delivery', 'total', 'name', 'phone',
                              'area', 'address', 'slot', 'note', 'status', 'createdAt',
-                             'ref', 'payMethod', 'payStatus'])
+                             'ref', 'payMethod', 'payStatus', 'loc'])
         && o.status == 'new'
+        && (!('loc' in o) || validLoc(o.loc))
         && o.ref is string && o.ref.matches('^FO-[A-Z0-9]{4}$')
         && o.payMethod in ['upi', 'cod']
         && o.payStatus == 'unpaid'

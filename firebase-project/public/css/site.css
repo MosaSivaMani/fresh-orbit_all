@@ -258,4 +258,16 @@ footer .wrap{padding-block:30px 110px;display:flex;flex-wrap:wrap;justify-conten
 .page .btn-gold{color:var(--gold-ink);margin-top:20px}
 .page .muted{color:var(--muted);font-size:13px}
 
+/* checkout: optional customer location */
+.loc-box{display:flex;flex-direction:column;gap:7px;padding:12px 14px;border-radius:14px;border:1px dashed rgba(216,180,106,0.45);background:rgba(216,180,106,0.04)}
+.loc-box small{font-size:12px;color:var(--muted);line-height:1.4}
+.loc-box .err{font-size:12px;color:var(--warn);font-weight:600;font-style:normal}
+.loc-btn{align-self:flex-start;min-height:42px;padding:0 16px;border-radius:21px;border:1px solid var(--gold);background:transparent;color:var(--gold-hi);font-size:14px;font-weight:700}
+.loc-btn:disabled{opacity:.6}
+.loc-box.ok{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;border-style:solid;border-color:rgba(110,200,140,0.45);background:rgba(110,200,140,0.06);font-size:14px}
+.loc-box.ok small{display:inline}
+.loc-act{display:flex;gap:12px;align-items:center}
+.loc-act a{color:var(--gold-hi);font-size:13px;font-weight:700}
+.loc-act button{border:0;background:transparent;color:var(--muted);font-size:13px;font-weight:700;padding:6px 0}
+
 @media (max-width:400px){header.top .wrap{gap:8px}.hdr-actions{gap:6px}.pill-btn{padding:0 11px;font-size:12px}.brand{gap:7px}.brand svg{width:28px;height:28px}.brand b{font-size:21px}}
