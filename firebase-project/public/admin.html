@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fresh Orbit Owner</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0A0E14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Crect width='30' height='30' rx='8' fill='%230A0E14'/%3E%3Ccircle cx='15' cy='15' r='7' stroke='%23D8B46A' stroke-width='1.8' fill='none'/%3E%3Ccircle cx='25' cy='10' r='2' fill='%23D8B46A'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Anek+Telugu:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/admin.css">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="Fresh Orbit shop">
+      <svg width="34" height="34" viewBox="0 0 30 30" fill="none" aria-hidden="true"><circle cx="15" cy="15" r="7" stroke="#D8B46A" stroke-width="1.6"/><ellipse cx="15" cy="15" rx="13.5" ry="5.2" transform="rotate(-24 15 15)" stroke="#D8B46A" stroke-width="1.1" opacity="0.7"/><circle cx="26.2" cy="10" r="1.8" fill="#D8B46A"/></svg>
+      <span><b>Fresh <i>Orbit</i></b><small>Owner dashboard</small></span>
+    </a>
+    <div class="hdr-actions">
+      <a class="pill-btn" href="/" style="text-decoration:none">View shop</a>
+      <button class="pill-btn" id="signOut" hidden aria-label="Sign out"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Lock</button>
+    </div>
+  </div>
+</header>
+
+<main class="admin-main">
+  <div id="setupNote" class="notice" hidden>Firebase is not connected yet. Paste your project config into <b>js/firebase-config.js</b> and deploy again. See README step 4.</div>
+
+  <form class="login" id="login" hidden novalidate>
+    <div class="lock-ico"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+    <div><span class="eyebrow">Fresh Orbit</span><h1>Shop owner</h1><span class="te" style="color:var(--muted)">షాప్ ఓనర్ లాగిన్</span></div>
+    <label class="field"><span>Email</span><input id="lEmail" type="email" autocomplete="username" required></label>
+    <label class="field"><span>Password</span><input id="lPass" type="password" autocomplete="current-password" required></label>
+    <div class="form-err" id="lErr" role="alert"></div>
+    <button class="btn-gold" id="lBtn" type="submit">Sign in</button>
+  </form>
+
+  <section id="app" hidden>
+    <div class="tabs" role="tablist" aria-label="Owner sections">
+      <button role="tab" id="tab-orders" aria-selected="true" data-tab="orders">Orders <span class="badge" id="newCount" hidden>0</span></button>
+      <button role="tab" id="tab-products" aria-selected="false" data-tab="products">Products</button>
+      <button role="tab" id="tab-delivery" aria-selected="false" data-tab="delivery">Delivery</button>
+    </div>
+    <div class="panel" id="pane-orders" role="tabpanel" aria-labelledby="tab-orders"></div>
+    <div class="panel" id="pane-products" role="tabpanel" aria-labelledby="tab-products" hidden></div>
+    <div class="panel" id="pane-delivery" role="tabpanel" aria-labelledby="tab-delivery" hidden></div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" hidden><i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></i><span id="toastMsg"></span></div>
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>

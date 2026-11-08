@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fresh Orbit · Checkout</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Manrope:wght@400;500;600;700;800&amp;family=Anek+Telugu:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#05080C}
+a{color:inherit;text-decoration:none}a:hover{color:#E9CC8C}
+button{font-family:inherit;cursor:pointer}
+input,textarea{font-family:inherit}
+input::placeholder,textarea::placeholder{color:#7C8794}
+input:focus,textarea:focus{outline:none;border-color:#D8B46A !important}
+</style>
+</helmet>
+<div style="width: 390px; height: 1340px; position: relative; overflow: hidden; background: #0A0E14; color: #F2EDE3; font-family: 'Manrope', system-ui, sans-serif; border-radius: 36px; display: flex; flex-direction: column">
+
+  <header style="display: flex; align-items: center; gap: 14px; padding: 18px 20px 16px; border-bottom: 1px solid rgba(216,180,106,0.18)">
+    <a href="Cart.dc.html" aria-label="Back to cart" style="width: 44px; height: 44px; border-radius: 22px; background: #121821; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2EDE3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></a>
+    <div style="display: flex; flex-direction: column">
+      <h1 style="margin: 0; font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 30px; line-height: 1.05">Delivery details</h1>
+      <span style="font-family: 'Anek Telugu', sans-serif; font-size: 14px; color: #9AA3AF">ఎక్కడికి పంపాలి?</span>
+    </div>
+  </header>
+
+  <form style="padding: 22px 20px 0; display: flex; flex-direction: column; gap: 20px">
+    <label style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #9AA3AF">Name</span>
+      <input type="text" value="Fresh Orbit" style="height: 52px; padding: 0 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: #121821; color: #F2EDE3; font-size: 15px">
+    </label>
+    <label style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #9AA3AF">Phone</span>
+      <span style="display: flex; align-items: center; height: 52px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: #121821; overflow: hidden">
+        <span style="padding: 0 14px; height: 100%; display: flex; align-items: center; border-right: 1px solid rgba(255,255,255,0.08); font-size: 15px; font-weight: 700; color: #C9CFD6">+91</span>
+        <input type="tel" placeholder="10-digit mobile" style="flex: 1; height: 100%; padding: 0 14px; border: 0; background: transparent; color: #F2EDE3; font-size: 15px">
+      </span>
+    </label>
+
+    <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 10px">
+      <legend style="padding: 0; margin-bottom: 10px; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #9AA3AF">Area · delivery charge</legend>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{areas}}" as="a" hint-placeholder-count="12">
+          <button type="button" onClick="{{a.pick}}" style="min-height: 52px; padding: 8px 12px; border-radius: 14px; border: {{a.border}}; background: {{a.bg}}; color: #F2EDE3; display: flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left">
+            <span style="font-size: 13px; font-weight: 600; line-height: 1.2">{{a.name}}</span>
+            <span style="font-size: 12px; font-weight: 800; color: {{a.feeColor}}">₹{{a.fee}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </fieldset>
+
+    <label style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #9AA3AF">Address</span>
+      <textarea rows="3" placeholder="Door no, street, landmark" style="padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: #121821; color: #F2EDE3; font-size: 15px; resize: none"></textarea>
+    </label>
+
+    <fieldset style="margin: 0; padding: 0; border: 0">
+      <legend style="padding: 0; margin-bottom: 10px; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #9AA3AF">Delivery time</legend>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 5px; background: #121821; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px">
+        <sc-for list="{{slots}}" as="s" hint-placeholder-count="3">
+          <button type="button" onClick="{{s.pick}}" style="height: 46px; border-radius: 14px; border: 0; background: {{s.bg}}; color: {{s.color}}; font-size: 13px; font-weight: 700">{{s.label}}</button>
+        </sc-for>
+      </div>
+    </fieldset>
+
+    <label style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #9AA3AF">Note <span style="text-transform: none; letter-spacing: 0; font-weight: 500">(optional)</span></span>
+      <input type="text" placeholder="e.g. Cut prawns small, call on arrival" style="height: 52px; padding: 0 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: #121821; color: #F2EDE3; font-size: 15px">
+    </label>
+  </form>
+
+  <!-- Summary -->
+  <div style="margin: 22px 20px 0; padding: 18px; border-radius: 22px; background: #121821; border: 1px solid rgba(216,180,106,0.22); display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="color: #9AA3AF">Items (2)</span><span style="font-weight: 700">₹540</span></div>
+    <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="color: #9AA3AF">Delivery · {{areaName}}</span><span style="font-weight: 700">{{fee}}</span></div>
+    <div style="height: 1px; background: rgba(255,255,255,0.08)"></div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-family: 'Instrument Serif', serif; font-size: 24px">Total</span><span style="font-size: 24px; font-weight: 800; color: #E9CC8C">{{total}}</span></div>
+  </div>
+
+  <div style="margin: auto 16px 26px; display: flex; flex-direction: column; gap: 10px">
+    <button type="button" style="height: 62px; border-radius: 31px; border: 0; background: #25D366; color: #052E16; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; font-weight: 800; box-shadow: 0 14px 30px rgba(0,0,0,0.45)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8.1 19L4 20Z"></path><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8a4 4 0 0 1-1.8-1.8l.8-1-1-2L9 9.5Z"></path></svg>
+      Send order on WhatsApp
+    </button>
+    <span style="text-align: center; font-size: 12px; color: #9AA3AF">Pay the shop after they call to confirm · <span style="font-family: 'Anek Telugu', sans-serif">షాప్ వాళ్ళు కాల్ చేసిన తర్వాత చెల్లించండి</span></span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1340}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { area: 0, slot: 2 }; }
+  renderVals() {
+    const list = [['Ramanayyapeta',20],['Suryaraopeta',30],['Jagannaickpur',30],['Gandhinagar',30],['Bhanugudi',30],['Ramaraopeta',30],['Sarpavaram',40],['Kondayapalem',40],['Turangi',50],['Madhavapatnam',50],['Vakalapudi',50],['Other in Kakinada',60]];
+    const areas = list.map(([name, fee], i) => {
+      const on = this.state.area === i;
+      return { name, fee, pick: () => this.setState({ area: i }),
+        bg: on ? 'rgba(216,180,106,0.14)' : '#121821',
+        border: on ? '1.5px solid #D8B46A' : '1px solid rgba(255,255,255,0.08)',
+        feeColor: on ? '#E9CC8C' : '#9AA3AF' };
+    });
+    const slots = ['7 – 10 AM', '12 – 3 PM', '5 – 8 PM'].map((label, i) => {
+      const on = this.state.slot === i;
+      return { label, pick: () => this.setState({ slot: i }), bg: on ? '#D8B46A' : 'transparent', color: on ? '#1A1408' : '#C9CFD6' };
+    });
+    const [areaName, fee] = list[this.state.area];
+    return { areas, slots, areaName, fee: '₹' + fee, total: '₹' + (540 + fee) };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fresh Orbit · Owner products</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Manrope:wght@400;500;600;700;800&amp;family=Anek+Telugu:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#05080C}
+a{color:inherit;text-decoration:none}a:hover{color:#E9CC8C}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+input::placeholder{color:#7C8794}
+input:focus{outline:none;border-color:#D8B46A !important}
+</style>
+</helmet>
+<div style="width: 390px; height: 1460px; position: relative; overflow: hidden; background: #0A0E14; color: #F2EDE3; font-family: 'Manrope', system-ui, sans-serif; border-radius: 36px">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 16px; border-bottom: 1px solid rgba(216,180,106,0.18)">
+    <div style="display: flex; flex-direction: column">
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #D8B46A">Fresh Orbit · Owner</span>
+      <h1 style="margin: 0; font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 30px; line-height: 1.1">Dashboard</h1>
+    </div>
+    <div style="display: flex; gap: 8px">
+      <a href="Main.dc.html" style="height: 44px; padding: 0 14px; border-radius: 22px; background: #121821; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; font-size: 13px; font-weight: 700">View shop</a>
+      <a href="OwnerPin.dc.html" aria-label="Lock dashboard" style="width: 44px; height: 44px; border-radius: 22px; background: #121821; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2EDE3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></a>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <nav aria-label="Owner sections" style="margin: 18px 20px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 5px; background: #121821; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px">
+    <a href="OwnerProducts.dc.html" aria-current="page" style="height: 46px; border-radius: 15px; background: #D8B46A; color: #1A1408; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800">Products</a>
+    <a href="OwnerDelivery.dc.html" style="height: 46px; border-radius: 15px; color: #C9CFD6; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700">Delivery</a>
+  </nav>
+
+  <!-- Stats -->
+  <div style="margin: 16px 20px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+    <div style="padding: 14px 16px; border-radius: 18px; background: #121821; border: 1px solid rgba(255,255,255,0.06)"><div style="font-size: 26px; font-weight: 800; color: #E9CC8C">{{liveCount}}</div><div style="font-size: 12px; color: #9AA3AF">In stock</div></div>
+    <div style="padding: 14px 16px; border-radius: 18px; background: #121821; border: 1px solid rgba(255,255,255,0.06)"><div style="font-size: 26px; font-weight: 800; color: #F2EDE3">{{outCount}}</div><div style="font-size: 12px; color: #9AA3AF">Out of stock</div></div>
+  </div>
+
+  <!-- Find + add -->
+  <div style="margin: 16px 20px 0; display: flex; gap: 10px">
+    <label style="flex: 1; height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-radius: 25px; background: #121821; border: 1px solid rgba(255,255,255,0.08)">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9AA3AF" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input type="search" aria-label="Find product" placeholder="Find product" style="flex: 1; border: 0; background: transparent; color: #F2EDE3; font-size: 14px">
+    </label>
+    <button style="height: 50px; padding: 0 18px; border-radius: 25px; border: 0; background: linear-gradient(135deg, #E9CC8C, #C9A35C); color: #1A1408; font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add</button>
+  </div>
+
+  <!-- Groups -->
+  <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+    <section style="margin: 22px 20px 0">
+      <h2 style="margin: 0 0 10px; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #9AA3AF">{{g.title}}</h2>
+      <div style="background: #121821; border: 1px solid rgba(255,255,255,0.06); border-radius: 22px">
+        <sc-for list="{{g.items}}" as="p" hint-placeholder-count="4">
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-top: {{p.divider}}; opacity: {{p.opacity}}">
+            <sc-if value="{{p.hasImg}}" hint-placeholder-val="{{ true }}"><img src="{{p.img}}" alt="" style="width: 48px; height: 48px; border-radius: 14px; object-fit: cover; display: block"></sc-if>
+            <sc-if value="{{p.noImg}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 48px; height: 48px; border-radius: 14px; background: rgba(216,180,106,0.1); border: 1px solid rgba(216,180,106,0.22); display: flex; align-items: center; justify-content: center; font-family: 'Instrument Serif', serif; font-size: 20px; color: #E9CC8C">{{p.mono}}</span></sc-if>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+              <span style="font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{p.en}}</span>
+              <span style="font-family: 'Anek Telugu', sans-serif; font-size: 12px; color: #9AA3AF">{{p.te}}</span>
+            </div>
+            <label style="display: flex; align-items: center; height: 44px; width: 92px; border-radius: 12px; background: #0A0E14; border: 1px solid rgba(255,255,255,0.1); padding: 0 8px; gap: 2px">
+              <span style="font-size: 13px; color: #9AA3AF">₹</span>
+              <input type="text" inputmode="numeric" aria-label="Price per kg for {{p.en}}" value="{{p.price}}" style="width: 44px; border: 0; background: transparent; color: #F2EDE3; font-size: 14px; font-weight: 700">
+              <span style="font-size: 11px; color: #9AA3AF">/kg</span>
+            </label>
+            <button role="switch" aria-checked="{{p.on}}" aria-label="{{p.en}} in stock" onClick="{{p.toggle}}" style="width: 52px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center">
+              <span style="width: 46px; height: 28px; border-radius: 14px; background: {{p.track}}; position: relative; display: block">
+                <span style="position: absolute; top: 3px; left: {{p.knobLeft}}; width: 22px; height: 22px; border-radius: 11px; background: {{p.knob}}; box-shadow: 0 2px 6px rgba(0,0,0,0.4)"></span>
+              </span>
+            </button>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-for>
+
+  <!-- Toast -->
+  <div role="status" style="position: absolute; left: 50%; transform: translateX(-50%); bottom: 28px; height: 48px; padding: 0 18px 0 14px; border-radius: 24px; background: #F2EDE3; color: #0A0E14; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 14px 30px rgba(0,0,0,0.5); white-space: nowrap">
+    <span style="width: 24px; height: 24px; border-radius: 12px; background: #1F7A4D; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span>
+    Saved · White Pomfret ₹900/kg
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1460}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { off: { crab: true } }; }
+  renderVals() {
+    const raw = [
+      { title: 'Fish · చేపలు', items: [
+        { id: 'seer', en: 'Seer Fish', te: 'కోనెం', price: '1700', img: '/_blob/59e0e259468969e48e0626846404222c' },
+        { id: 'wp', en: 'White Pomfret', te: 'తెల్ల చందువ', price: '900', img: '/_blob/b9e9674fc1477dabc29b10aa3f72520e' },
+        { id: 'bp', en: 'Black Pomfret', te: 'నల్ల చందువ', price: '650', img: '/_blob/7dac9efc7a241897f9c547d7f4a4ce94' },
+        { id: 'sb', en: 'Sea Bass', te: 'పండుగప్ప', price: '750', img: '/_blob/e881b1084055ffffdda49c92814139bb' },
+        { id: 'mk', en: 'Mackerel', te: 'కనగడత', price: '280', img: '/_blob/52259cb91a2512a93f9f7126746b2bf6' }
+      ]},
+      { title: 'Prawns & Crab · రొయ్యలు', items: [
+        { id: 'tp', en: 'Tiger Prawns', te: 'టైగర్ రొయ్యలు', price: '850', img: '/_blob/69b8b132cc7f41ed2a6371afc52aedee' },
+        { id: 'pr', en: 'Prawns', te: 'రొయ్యలు', price: '480', img: '/_blob/6e699b3aa3417c8910227af23fcbaad5' },
+        { id: 'crab', en: 'Mud Crab', te: 'పీతలు', price: '650', img: '/_blob/7ee001563b078836c58e834211331f60' }
+      ]},
+      { title: 'Chicken & Mutton · చికెన్ · మటన్', items: [
+        { id: 'cc', en: 'Chicken Curry Cut', te: 'చికెన్ కర్రీ కట్', price: '260', mono: 'C' },
+        { id: 'cb', en: 'Chicken Boneless', te: 'బోన్‌లెస్ చికెన్', price: '360', mono: 'C' },
+        { id: 'mc', en: 'Mutton Curry Cut', te: 'మటన్ కర్రీ కట్', price: '900', mono: 'M' },
+        { id: 'mb', en: 'Mutton Boneless', te: 'బోన్‌లెస్ మటన్', price: '1100', mono: 'M' }
+      ]}
+    ];
+    let live = 0, out = 0;
+    const groups = raw.map((g) => ({ title: g.title, items: g.items.map((p, i) => {
+      const on = !this.state.off[p.id];
+      if (on) live++; else out++;
+      return { ...p, on: on ? 'true' : 'false', hasImg: !!p.img, noImg: !p.img,
+        divider: i === 0 ? '0' : '1px solid rgba(255,255,255,0.06)',
+        opacity: on ? '1' : '0.55',
+        track: on ? '#1F7A4D' : 'rgba(255,255,255,0.14)',
+        knob: on ? '#FFFFFF' : '#9AA3AF',
+        knobLeft: on ? '21px' : '3px',
+        toggle: () => this.setState({ off: { ...this.state.off, [p.id]: on } }) };
+    }) }));
+    return { groups, liveCount: live, outCount: out };
+  }
+}
+</script>
+</body>
+</html>

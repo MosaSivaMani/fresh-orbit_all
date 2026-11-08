@@ -1,0 +1,22 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-10-30T15:05:00Z"},
+  "title": "Fresh Orbit Premium Redesign",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 390, "h": 2300, "title": "01 · Shop", "is_interactive": true, "radius": 36},
+    "Product.dc.html": {"x": 470, "y": 0, "w": 390, "h": 844, "title": "02 · Product sheet", "is_interactive": true, "radius": 36},
+    "Cart.dc.html": {"x": 940, "y": 0, "w": 390, "h": 844, "title": "03 · Cart", "is_interactive": true, "radius": 36},
+    "Checkout.dc.html": {"x": 1410, "y": 0, "w": 390, "h": 1340, "title": "04 · Checkout", "is_interactive": true, "radius": 36},
+    "OwnerPin.dc.html": {"x": 0, "y": 2720, "w": 390, "h": 844, "title": "05 · Owner PIN", "is_interactive": true, "radius": 36},
+    "OwnerProducts.dc.html": {"x": 470, "y": 2720, "w": 390, "h": 1460, "title": "06 · Owner · Products", "is_interactive": true, "radius": 36},
+    "OwnerDelivery.dc.html": {"x": 940, "y": 2720, "w": 390, "h": 1900, "title": "07 · Owner · Delivery", "is_interactive": true, "radius": 36}
+  },
+  "order": ["Main.dc.html", "Product.dc.html", "Cart.dc.html", "Checkout.dc.html", "OwnerPin.dc.html", "OwnerProducts.dc.html", "OwnerDelivery.dc.html"],
+  "notes": {
+    "rowCustomer": {"x": 0, "y": -300, "text": "Customer · Shop to WhatsApp order", "kind": "title1", "maxW": 1800},
+    "rowOwner": {"x": 0, "y": 2420, "text": "Shop owner · Products & delivery", "kind": "title1", "maxW": 1330}
+  },
+  "designSystems": []
+}

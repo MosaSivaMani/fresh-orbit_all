@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// Fresh Orbit security rules.
+// IMPORTANT: replace owner@example.com below with the shop owner's login email
+// (the same email you add under Authentication > Users).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner() {
+      return request.auth != null
+        && request.auth.token.email == "mosasiva6@gmail.com";
+    }
+
+    // Shop settings (WhatsApp number, delivery areas, banner...): public read, owner write.
+    match /shop/{docId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // Product catalogue: public read, owner write.
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // Orders: any customer can place one; only the owner can see or change them.
+    match /orders/{orderId} {
+      allow create: if validNewOrder(request.resource.data);
+      allow read, update, delete: if isOwner();
+    }
+
+    function validNewOrder(o) {
+      return o.keys().hasAll(['items', 'subtotal', 'delivery', 'total', 'name', 'phone',
+                              'area', 'address', 'slot', 'status', 'createdAt'])
+        && o.keys().hasOnly(['items', 'subtotal', 'delivery', 'total', 'name', 'phone',
+                             'area', 'address', 'slot', 'note', 'status', 'createdAt'])
+        && o.status == 'new'
+        && o.items is list
+        && o.items.size() >= 1
+        && o.items.size() <= 30
+        && o.total is number
+        && o.subtotal is number
+        && o.delivery is number
+        && o.name is string && o.name.size() > 0 && o.name.size() <= 80
+        && o.phone is string && o.phone.matches('^[6-9][0-9]{9}$')
+        && o.area is string && o.area.size() <= 80
+        && o.address is string && o.address.size() > 0 && o.address.size() <= 400
+        && o.slot is string && o.slot.size() <= 40
+        && (!('note' in o) || (o.note is string && o.note.size() <= 300))
+        && o.createdAt == request.time;
+    }
+  }
+}
