@@ -95,6 +95,9 @@ You're live. Share the site address with customers.
 | Pick the home-page "Catch of the day" | **Products** → **Edit** → tick "Catch of the day" |
 | Stop orders for the day | **Delivery** → **Orders** switch off → **Save changes** |
 | Change the WhatsApp number, areas, charges, timings or banner | **Delivery** → **Save changes** |
+| Add or remove an admin | **Admins** → type their email → **Add admin**, then create their login in Firebase → **Authentication → Users → Add user** with the same email |
+
+The main owner email is written in two places: `mainOwner()` in `firestore.rules` and `MAIN_OWNER` in `public/js/admin.js`. That person is always an admin and cannot be removed from the dashboard. Everyone else is managed on the **Admins** tab.
 
 Photos you upload are shrunk to a small size automatically, so phone photos are fine.
 

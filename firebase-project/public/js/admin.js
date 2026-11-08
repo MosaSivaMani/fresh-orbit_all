@@ -1,6 +1,11 @@
 // Fresh Orbit — owner dashboard.
 import { CATS, DEFAULT_SETTINGS, DEFAULT_PRODUCTS } from './defaults.js';
 import { firebase } from './fb.js';
+import { firebaseConfig } from './firebase-config.js';
+
+// The main owner can always manage the shop and cannot be removed.
+// Keep this the same as mainOwner() in firestore.rules.
+const MAIN_OWNER = 'mosasiva6@gmail.com';
 
 const $ = (id) => document.getElementById(id);
 const rupee = (n) => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
@@ -16,7 +21,9 @@ let settings = null, settingsDraft = null, settingsDirty = false;
 let editing = null;        // product id being edited, or '__new'
 let draft = null;          // product draft in the editor
 let confirmDelete = false;
+let admins = [], adminsLoaded = false, myEmail = '', removingAdmin = '';
 const unsubs = [];
+const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 
 let tt;
 function toast(msg, isErr) {
@@ -27,7 +34,7 @@ function toast(msg, isErr) {
 }
 function failMsg(e) {
   return e && e.code === 'permission-denied'
-    ? 'Not allowed. Check the owner email in firestore.rules (README step 5).'
+    ? 'Not allowed. This email is not on the admin list, or the latest firestore.rules are not published.'
     : 'Could not save. Check your internet connection and try again.';
 }
 
@@ -36,17 +43,35 @@ async function boot() {
   fb = await firebase();
   if (!fb) { $('setupNote').hidden = false; return; }
   const { authMod, auth } = fb;
-  authMod.onAuthStateChanged(auth, (user) => {
+  authMod.onAuthStateChanged(auth, async (user) => {
     unsubs.splice(0).forEach((u) => u());
+    $('notAdmin').hidden = true;
     if (user) {
-      $('login').hidden = true; $('app').hidden = false; $('signOut').hidden = false;
+      myEmail = String(user.email || '').toLowerCase();
+      $('login').hidden = true; $('signOut').hidden = false;
+      // Only admins can read the admin list, so this tells us whether this login may manage the shop.
+      try {
+        await fb.fs.getDoc(fb.fs.doc(fb.db, 'admins', 'list'));
+      } catch (e) {
+        if (e && e.code === 'permission-denied') {
+          $('notAdminEmail').textContent = user.email || 'this account';
+          $('notAdmin').hidden = false; $('app').hidden = true;
+          return;
+        }
+        console.warn(e); // network trouble: carry on, the panes show their own errors
+      }
+      if (auth.currentUser !== user) return;
+      $('app').hidden = false;
       subscribe();
       render();
     } else {
+      myEmail = '';
       $('login').hidden = false; $('app').hidden = true; $('signOut').hidden = true;
-      orders = []; products = []; settings = null; ordersLoaded = productsLoaded = false;
+      orders = []; products = []; settings = null; admins = [];
+      ordersLoaded = productsLoaded = adminsLoaded = false;
     }
   });
+  $('notAdminOut').onclick = () => authMod.signOut(auth);
   $('login').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = $('lEmail').value.trim(), pass = $('lPass').value;
@@ -79,15 +104,21 @@ function subscribe() {
     if (!settingsDirty) settingsDraft = structuredClone(settings || DEFAULT_SETTINGS);
     if (tab === 'delivery' && !settingsDirty) renderDelivery();
   }, (e) => console.warn(e)));
+  unsubs.push(fs.onSnapshot(fs.doc(db, 'admins', 'list'), (snap) => {
+    admins = snap.exists() && Array.isArray(snap.data().emails) ? snap.data().emails : [];
+    adminsLoaded = true;
+    if (tab === 'admins') renderAdmins();
+  }, (e) => { adminsLoaded = true; console.warn(e); if (tab === 'admins') renderAdmins(e); }));
 }
 
 /* ====== tabs ====== */
 function render() {
   document.querySelectorAll('[role=tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
-  ['orders', 'products', 'delivery'].forEach((t) => { $('pane-' + t).hidden = t !== tab; });
+  ['orders', 'products', 'delivery', 'admins'].forEach((t) => { $('pane-' + t).hidden = t !== tab; });
   if (tab === 'orders') renderOrders();
   if (tab === 'products') renderProducts();
   if (tab === 'delivery') renderDelivery();
+  if (tab === 'admins') renderAdmins();
 }
 function renderBadge() {
   const n = orders.filter((o) => o.status === 'new').length;
@@ -306,6 +337,58 @@ async function saveSettings() {
   } catch (e) { toast(failMsg(e), true); }
 }
 
+/* ====== admins ====== */
+function renderAdmins(err) {
+  const pane = $('pane-admins');
+  if (err) { pane.innerHTML = `<div class="notice">${esc(failMsg(err).replace('Could not save', 'Could not load the admin list'))}</div>`; return; }
+  if (!adminsLoaded) { pane.innerHTML = '<div class="notice">Loading admins…</div>'; return; }
+  const usersUrl = `https://console.firebase.google.com/project/${encodeURIComponent(firebaseConfig.projectId)}/authentication/users`;
+  const others = admins.filter((a) => a !== MAIN_OWNER);
+  const row = (email, tag, removable) => `<div class="admin-row">
+      <span class="em">${esc(email)}${email === myEmail ? ' <span class="tag">· you</span>' : ''}</span>
+      ${tag ? `<span class="tag">${tag}</span>` : ''}
+      ${removable ? (removingAdmin === email
+        ? `<span class="act-row"><button class="btn-sm" data-act="keepadmin">Keep</button><button class="btn-sm danger" data-adminrm="${esc(email)}">Remove</button></span>`
+        : `<button type="button" class="x" data-adminask="${esc(email)}" aria-label="Remove ${esc(email)}">${X}</button>`) : ''}
+    </div>`;
+  pane.innerHTML = `
+    <div class="box">
+      <h2>Admins</h2>
+      <p style="margin:0;color:var(--soft);font-size:14px">Everyone here can see all orders and change prices, stock and delivery settings. Add only people you trust.</p>
+      <div class="list-edit">
+        ${row(MAIN_OWNER, 'Main owner', false)}
+        ${others.map((a) => row(a, '', a !== myEmail)).join('')}
+      </div>
+      ${others.length ? '' : '<p style="margin:0;color:var(--muted);font-size:13px">No other admins yet.</p>'}
+    </div>
+    <form class="box" id="adminAdd" novalidate>
+      <h2>Add an admin</h2>
+      <label class="field"><span>Their email</span><input id="aEmail" type="email" autocomplete="off" placeholder="friend@gmail.com" maxlength="120"></label>
+      <div class="form-err" id="aErr" role="alert"></div>
+      <button class="btn-gold" type="submit" id="aBtn">Add admin</button>
+      <div class="notice">After adding them here, create their login: open <a href="${usersUrl}" target="_blank" rel="noopener" style="color:var(--gold)">Firebase → Authentication → Users</a>, press <b>Add user</b>, and use the same email with a password. Then send them this page's link and their password.</div>
+    </form>`;
+}
+async function saveAdmins(list, okMsg) {
+  const { fs, db } = fb;
+  try {
+    await fs.setDoc(fs.doc(db, 'admins', 'list'), { emails: list, updatedBy: myEmail, updatedAt: fs.serverTimestamp() });
+    removingAdmin = ''; toast(okMsg);
+    return true;
+  } catch (e) { toast(failMsg(e), true); return false; }
+}
+async function addAdmin() {
+  const email = $('aEmail').value.trim().toLowerCase();
+  const err = !email ? 'Enter an email.' : !isEmail(email) ? 'That does not look like an email address.'
+    : (email === MAIN_OWNER || admins.includes(email)) ? 'This email is already an admin.'
+    : admins.length >= 25 ? 'The admin list is full (25). Remove someone first.' : '';
+  if (err) { $('aErr').textContent = err; return; }
+  $('aBtn').disabled = true; $('aBtn').textContent = 'Adding…';
+  const ok = await saveAdmins([...admins, email], email + ' is now an admin');
+  if (ok) { $('aEmail').value = ''; $('aErr').textContent = ''; }
+  if ($('aBtn')) { $('aBtn').disabled = false; $('aBtn').textContent = 'Add admin'; }
+}
+
 /* ====== events ====== */
 document.addEventListener('click', async (e) => {
   const t = e.target.closest('button'); if (!t || t.disabled) return;
@@ -328,7 +411,14 @@ document.addEventListener('click', async (e) => {
   if (t.dataset.sopen) { readSettings(); settingsDraft.open = settingsDraft.open === false; settingsDirty = true; renderDelivery(); return; }
   if (t.dataset.arm) { readSettings(); settingsDraft.areas.splice(+t.dataset.arm, 1); settingsDirty = true; renderDelivery(); return; }
   if (t.dataset.srm) { readSettings(); settingsDraft.slots.splice(+t.dataset.srm, 1); settingsDirty = true; renderDelivery(); return; }
+  if (t.dataset.adminask) { removingAdmin = t.dataset.adminask; renderAdmins(); return; }
+  if (t.dataset.adminrm) {
+    const email = t.dataset.adminrm; t.disabled = true;
+    await saveAdmins(admins.filter((a) => a !== email), email + ' removed from admins');
+    return;
+  }
   const act = t.dataset.act;
+  if (act === 'keepadmin') { removingAdmin = ''; renderAdmins(); return; }
   if (act === 'seed') { t.disabled = true; t.textContent = 'Loading…'; await seed(); return; }
   if (act === 'new') { editing = '__new'; draft = { en: '', te: '', cat: 'fish', price: '', desc: '', cuts: ['Cleaned', 'Whole'], weights: [0.5, 1, 1.5, 2], inStock: true, best: false, featured: false, img: '' }; confirmDelete = false; renderProducts(); $('pEn') && $('pEn').focus(); return; }
   if (act === 'cancel') { editing = null; draft = null; confirmDelete = false; renderProducts(); return; }
@@ -345,7 +435,10 @@ document.addEventListener('click', async (e) => {
   if (act === 'savesettings') { saveSettings(); return; }
   if (act === 'resetsettings') { settingsDirty = false; settingsDraft = structuredClone(settings || DEFAULT_SETTINGS); renderDelivery(); toast('Changes discarded'); return; }
 });
-document.addEventListener('submit', (e) => { if (e.target.id === 'pEditor') { e.preventDefault(); saveEditor(); } });
+document.addEventListener('submit', (e) => {
+  if (e.target.id === 'pEditor') { e.preventDefault(); saveEditor(); }
+  if (e.target.id === 'adminAdd') { e.preventDefault(); addAdmin(); }
+});
 document.addEventListener('input', (e) => { if (e.target.closest('#pane-delivery')) settingsDirty = true; });
 document.addEventListener('change', async (e) => {
   const el = e.target;

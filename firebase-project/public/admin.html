@@ -40,15 +40,23 @@
     <button class="btn-gold" id="lBtn" type="submit">Sign in</button>
   </form>
 
+  <div class="login" id="notAdmin" hidden>
+    <div><span class="eyebrow">Fresh Orbit</span><h1>Not an admin</h1></div>
+    <p style="margin:0;color:var(--soft)">You signed in as <b id="notAdminEmail"></b>, but this email is not on the shop's admin list. Ask the shop owner to add it on the Admins tab.</p>
+    <button class="btn-gold" type="button" id="notAdminOut">Sign out</button>
+  </div>
+
   <section id="app" hidden>
     <div class="tabs" role="tablist" aria-label="Owner sections">
       <button role="tab" id="tab-orders" aria-selected="true" data-tab="orders">Orders <span class="badge" id="newCount" hidden>0</span></button>
       <button role="tab" id="tab-products" aria-selected="false" data-tab="products">Products</button>
       <button role="tab" id="tab-delivery" aria-selected="false" data-tab="delivery">Delivery</button>
+      <button role="tab" id="tab-admins" aria-selected="false" data-tab="admins">Admins</button>
     </div>
     <div class="panel" id="pane-orders" role="tabpanel" aria-labelledby="tab-orders"></div>
     <div class="panel" id="pane-products" role="tabpanel" aria-labelledby="tab-products" hidden></div>
     <div class="panel" id="pane-delivery" role="tabpanel" aria-labelledby="tab-delivery" hidden></div>
+    <div class="panel" id="pane-admins" role="tabpanel" aria-labelledby="tab-admins" hidden></div>
   </section>
 </main>
 

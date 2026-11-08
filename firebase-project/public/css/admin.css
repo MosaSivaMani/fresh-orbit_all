@@ -4,9 +4,13 @@
 .login h1{font-family:var(--display);font-weight:400;font-size:40px;line-height:1.05;margin:4px 0 0}
 .lock-ico{width:64px;height:64px;border-radius:22px;background:rgba(216,180,106,0.1);border:1px solid rgba(216,180,106,0.35);display:flex;align-items:center;justify-content:center;color:var(--gold)}
 .form-err{font-size:13px;font-weight:600;color:var(--warn);min-height:18px}
-.tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:5px;background:var(--surface);border:1px solid var(--line);border-radius:20px;margin-bottom:20px}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:5px;background:var(--surface);border:1px solid var(--line);border-radius:20px;margin-bottom:20px}
 .tabs button{height:46px;border-radius:15px;border:0;background:transparent;color:var(--soft);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
 .tabs button[aria-selected="true"]{background:var(--gold);color:var(--gold-ink);font-weight:800}
+@media (max-width:420px){.tabs{gap:4px;padding:4px}.tabs button{font-size:13px;gap:5px}}
+.admin-row{display:flex;gap:10px;align-items:center;min-height:52px;padding:0 6px 0 14px;border-radius:14px;background:var(--ink);border:1px solid rgba(255,255,255,0.06)}
+.admin-row .em{flex:1;min-width:0;overflow-wrap:anywhere;font-size:14px;font-weight:600}
+.admin-row .tag{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold)}
 .tabs .badge{background:var(--ink);color:var(--gold-hi)}
 .tabs button[aria-selected="true"] .badge{background:var(--gold-ink);color:var(--gold-hi)}
 .panel{display:flex;flex-direction:column;gap:14px}
