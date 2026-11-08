@@ -7,7 +7,9 @@
 .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:5px;background:var(--surface);border:1px solid var(--line);border-radius:20px;margin-bottom:20px}
 .tabs button{height:46px;border-radius:15px;border:0;background:transparent;color:var(--soft);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
 .tabs button[aria-selected="true"]{background:var(--gold);color:var(--gold-ink);font-weight:800}
+.tabs button{min-width:0;padding:0 4px;white-space:nowrap}
 @media (max-width:420px){.tabs{gap:4px;padding:4px}.tabs button{font-size:13px;gap:5px}}
+@media (max-width:380px){.tabs button{font-size:12px;gap:4px;padding:0 2px}.tabs .badge{min-width:18px;height:18px;padding:0 4px;font-size:10px}}
 .admin-row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;min-height:52px;padding:4px 6px 4px 14px;border-radius:14px;background:var(--ink);border:1px solid rgba(255,255,255,0.06)}
 .admin-row .em{flex:1;min-width:0;overflow-wrap:anywhere;font-size:14px;font-weight:600}
 .admin-row .tag{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold)}
@@ -32,6 +34,15 @@
 .order ul li{display:flex;justify-content:space-between;gap:10px}
 .order .tot{font-size:18px;font-weight:800;color:var(--gold-hi);font-variant-numeric:tabular-nums}
 .order .addr{font-size:13px;color:var(--soft)}
+.order .ref{margin-left:8px;font-size:12px;font-weight:800;letter-spacing:0.5px;color:var(--gold);user-select:all}
+.pay-row{padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)}
+.pay-info{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--soft)}
+.pay{height:26px;padding:0 10px;border-radius:13px;font-size:11px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;display:inline-flex;align-items:center}
+.pay-due{background:rgba(245,184,74,0.14);color:var(--warn)}
+.pay-ok{background:rgba(74,222,128,0.16);color:var(--ok)}
+.btn-sm.xs{height:36px;padding:0 12px;font-size:12px}
+.btn-sm.ok{border-color:rgba(74,222,128,0.45);color:var(--ok)}
+.btn-gold:disabled,.btn-sm:disabled,.btn-ghost:disabled{opacity:0.5;cursor:not-allowed}
 .status{height:28px;padding:0 10px;border-radius:14px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;display:inline-flex;align-items:center}
 .st-new{background:rgba(216,180,106,0.18);color:var(--gold-hi)}
 .st-confirmed{background:rgba(96,165,250,0.18);color:#93C5FD}

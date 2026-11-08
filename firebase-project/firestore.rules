@@ -7,7 +7,9 @@ service cloud.firestore {
     // Who can manage the shop:
     //  - the main owner below, always (so the shop can never be locked out), and
     //  - every email in the admin list, which admins edit on the dashboard's Admins tab.
-    // Each admin also needs a login under Firebase > Authentication > Users.
+    // Each admin also needs a login under Firebase > Authentication > Users, and
+    // (except the main owner) must have clicked the verification email, so nobody
+    // can sign up with an admin's email address before the real person does.
     function mainOwner() {
       return "mosasiva6@gmail.com";
     }
@@ -16,9 +18,14 @@ service cloud.firestore {
       return request.auth != null
         && request.auth.token.email is string
         && (request.auth.token.email.lower() == mainOwner()
-            || (exists(/databases/$(database)/documents/admins/list)
+            || (request.auth.token.email_verified == true
+                && exists(/databases/$(database)/documents/admins/list)
                 && request.auth.token.email.lower()
                    in get(/databases/$(database)/documents/admins/list).data.emails));
+    }
+
+    function money(n) {
+      return n is int && n >= 0 && n <= 500000;
     }
 
     // Admin list: only admins can see or change it. Customers never see these emails.
@@ -51,16 +58,23 @@ service cloud.firestore {
 
     function validNewOrder(o) {
       return o.keys().hasAll(['items', 'subtotal', 'delivery', 'total', 'name', 'phone',
-                              'area', 'address', 'slot', 'status', 'createdAt'])
+                              'area', 'address', 'slot', 'status', 'createdAt',
+                              'ref', 'payMethod', 'payStatus'])
         && o.keys().hasOnly(['items', 'subtotal', 'delivery', 'total', 'name', 'phone',
-                             'area', 'address', 'slot', 'note', 'status', 'createdAt'])
+                             'area', 'address', 'slot', 'note', 'status', 'createdAt',
+                             'ref', 'payMethod', 'payStatus'])
         && o.status == 'new'
+        && o.ref is string && o.ref.matches('^FO-[A-Z0-9]{4}$')
+        && o.payMethod in ['upi', 'cod']
+        && o.payStatus == 'unpaid'
         && o.items is list
         && o.items.size() >= 1
         && o.items.size() <= 30
-        && o.total is number
-        && o.subtotal is number
-        && o.delivery is number
+        && money(o.subtotal)
+        && money(o.delivery)
+        && money(o.total)
+        && o.total == o.subtotal + o.delivery
+        && o.subtotal >= 1
         && o.name is string && o.name.size() > 0 && o.name.size() <= 80
         && o.phone is string && o.phone.matches('^[6-9][0-9]{9}$')
         && o.area is string && o.area.size() <= 80

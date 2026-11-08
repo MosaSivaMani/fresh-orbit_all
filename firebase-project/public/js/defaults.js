@@ -15,7 +15,8 @@ const PRAWN_W = [0.25, 0.5, 1, 2];
 const MEAT_W = [0.5, 1, 1.5, 2];
 
 export const DEFAULT_SETTINGS = {
-  whatsapp: '919848012345',
+  whatsapp: '918498857618',
+  upi: '8498857618@ybl',
   open: true,
   banner: 'ఈరోజు పులస వచ్చింది! · Pulasa arrived today',
   freeAbove: 999,

@@ -74,7 +74,7 @@ nav.links a:hover{color:var(--gold-hi)}
 .shop-head h2{font-family:var(--display);font-weight:400;font-size:clamp(34px,4.5vw,48px);line-height:1;margin:8px 0 0}
 .search{height:52px;width:min(380px,100%);display:flex;align-items:center;gap:10px;padding:0 18px;border-radius:26px;background:var(--surface);border:1px solid var(--line)}
 .search:focus-within{border-color:var(--gold)}
-.search input{flex:1;min-width:0;border:0;background:transparent;outline:0;font-size:14px}
+.search input{flex:1;min-width:0;border:0;background:transparent;outline:0;font-size:16px}
 .search input::placeholder{color:#7C8794}
 .cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:26px;scrollbar-width:none}
 .cats::-webkit-scrollbar{display:none}
@@ -188,7 +188,7 @@ footer .wrap{padding-block:30px 110px;display:flex;flex-wrap:wrap;justify-conten
 .sum .total b{font-size:24px;color:var(--gold-hi)}
 .field{display:flex;flex-direction:column;gap:7px}
 .field > span{font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)}
-.field input,.field textarea{min-height:50px;padding:12px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:var(--surface);font-size:15px;outline:0;resize:none}
+.field input,.field textarea,.field select{min-height:50px;padding:12px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:var(--surface);font-size:16px;outline:0;resize:none}
 .field input:focus,.field textarea:focus{border-color:var(--gold)}
 .field input::placeholder,.field textarea::placeholder{color:#7C8794}
 .field .err{font-size:12px;color:var(--warn);font-weight:600}
@@ -220,4 +220,42 @@ footer .wrap{padding-block:30px 110px;display:flex;flex-wrap:wrap;justify-conten
 .pill-btn,.brand b{white-space:nowrap}
 .toast{bottom:auto;top:calc(84px + env(safe-area-inset-top,0px))}
 @media (max-width:420px){.brand small{display:none}.brand b{font-size:23px}}
+/* ---- checkout: day, payment, sent view ---- */
+.seg button:disabled{opacity:0.4;cursor:not-allowed}
+.day-seg{margin-bottom:2px}
+.field .hint{font-size:12px;color:var(--gold-hi);font-weight:600;font-style:normal}
+.pay-pick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pay-pick button{min-height:62px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:2px;text-align:left;line-height:1.25}
+.pay-pick button b{font-size:14px}
+.pay-pick button small{font-size:12px;color:var(--muted)}
+.pay-pick button[aria-pressed="true"]{border:1.5px solid var(--gold);background:rgba(216,180,106,0.14)}
+.pay-pick button[aria-pressed="true"] small{color:var(--gold-hi)}
+.co-note{margin:0;padding:12px 14px;border-radius:14px;background:rgba(216,180,106,0.08);border:1px solid rgba(216,180,106,0.3);font-size:13px;color:var(--soft)}
+.line .rm{align-self:flex-start;height:36px;padding:0 14px;border-radius:18px;border:1px solid rgba(245,184,74,0.45);background:transparent;color:var(--warn);font-size:12px;font-weight:800}
+.line.is-gone{opacity:0.85}
+.ref-chip{align-self:flex-start;padding:5px 12px;border-radius:10px;background:rgba(216,180,106,0.14);border:1px solid rgba(216,180,106,0.45);color:var(--gold-hi);font-size:13px;font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums}
+.save-note{margin:0;font-size:13px;color:var(--soft);padding:10px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.paybox{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:18px;background:var(--surface);border:1px solid rgba(216,180,106,0.25)}
+.paybox .btn-gold{width:100%;height:60px;font-size:17px}
+.paybox .qr-toggle{justify-content:center;width:100%;height:48px}
+.pay-title{font-size:15px}
+.pay-hint{margin:0;font-size:13px;color:var(--soft)}
+.qr{display:none;align-self:center;background:#fff;padding:10px;border-radius:14px}
+.qr.show{display:flex}
+.qr svg,.qr img{display:block;width:200px;height:200px}
+@media (min-width:700px){.qr{display:flex}.paybox .qr-toggle{display:none}}
+.upi-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted)}
+.upi-row b{color:var(--text);font-size:14px;user-select:all;word-break:break-all}
+.upi-row .btn-ghost{height:40px;padding:0 16px;font-size:13px;flex:0 0 auto}
+
+/* ---- simple pages (privacy, 404) ---- */
+.page{padding-block:48px 80px;max-width:760px}
+.page h1{font-family:var(--display);font-weight:400;font-size:clamp(40px,6vw,64px);line-height:1;margin:12px 0 18px}
+.page h2{font-family:var(--display);font-weight:400;font-size:28px;margin:30px 0 8px}
+.page p,.page li{color:var(--soft);font-size:15px}
+.page ul{padding-left:20px;margin:0}
+.page a{color:var(--gold-hi)}
+.page .btn-gold{color:var(--gold-ink);margin-top:20px}
+.page .muted{color:var(--muted);font-size:13px}
+
 @media (max-width:400px){header.top .wrap{gap:8px}.hdr-actions{gap:6px}.pill-btn{padding:0 11px;font-size:12px}.brand{gap:7px}.brand svg{width:28px;height:28px}.brand b{font-size:21px}}

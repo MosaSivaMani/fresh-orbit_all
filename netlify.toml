@@ -1,2 +1,34 @@
+# Netlify settings for Fresh Orbit.
+# The website is the firebase-project/public folder.
 [build]
   publish = "firebase-project/public"
+
+# Short link: /admin opens the owner dashboard.
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200
+
+# Basic security headers for every page.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Owner dashboard: never shown inside other sites, never in Google, never cached.
+[[headers]]
+  for = "/admin*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    Content-Security-Policy = "frame-ancestors 'none'"
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"
+
+# Product photos rarely change: let phones keep them for a week.
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

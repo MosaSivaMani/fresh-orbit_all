@@ -1,9 +1,16 @@
-Fresh Orbit - everything from the Claude session
+Fresh Orbit - fish and meat delivery shop, Kakinada
 
-index-standalone.html   The full shop in one file. Upload to GitHub / Render / any host.
-claude-link-version.html The version published on your Claude link (with owner panel).
-firebase-project/       Own-domain version with real-time owner panel + orders. See its README.md.
-design-screens/         The 7 premium redesign screens (Claude design canvas files).
-photos/                 Product photos cut from your video.
+LIVE
+  Shop:             https://freshorbiit.netlify.app
+  Owner dashboard:  https://freshorbiit.netlify.app/admin
+
+THIS FOLDER
+  firebase-project/        The live website (Netlify publishes firebase-project/public).
+                           Full guide: firebase-project/README.md
+  netlify.toml             Netlify settings (which folder to publish, /admin link, security headers).
+  index-standalone.html    Older single-file version of the shop (no database). Not used by the live site.
+  claude-link-version.html Older version published on a Claude link. Not used by the live site.
+  design-screens/          Premium redesign mock-ups (Claude design canvas files). Not live.
+  photos/                  Original product photos.
 
 Claude Code session: https://claude.ai/code/session_01XyjhHhK2mzPUYLnHrYFTw9

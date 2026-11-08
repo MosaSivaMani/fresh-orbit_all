@@ -46,6 +46,15 @@
     <button class="btn-gold" type="button" id="notAdminOut">Sign out</button>
   </div>
 
+  <div class="login" id="verify" hidden>
+    <div><span class="eyebrow">Fresh Orbit</span><h1>Verify your email</h1></div>
+    <p style="margin:0;color:var(--soft)">You signed in as <b id="verifyEmail"></b>. Before this login can manage the shop, the email address must be confirmed. Open the verification email from Fresh Orbit / Firebase and click the link in it (check the spam folder too), then come back here.</p>
+    <div class="form-err" id="verifyMsg" role="alert"></div>
+    <button class="btn-gold" type="button" id="verifyDone">I've verified — continue</button>
+    <button class="btn-ghost" type="button" id="verifySend" style="justify-content:center">Send verification email</button>
+    <button class="btn-sm" type="button" id="verifyOut" style="align-self:center">Sign out</button>
+  </div>
+
   <section id="app" hidden>
     <div class="tabs" role="tablist" aria-label="Owner sections">
       <button role="tab" id="tab-orders" aria-selected="true" data-tab="orders">Orders <span class="badge" id="newCount" hidden>0</span></button>
