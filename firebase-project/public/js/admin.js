@@ -349,7 +349,7 @@ function renderAdmins(err) {
       ${tag ? `<span class="tag">${tag}</span>` : ''}
       ${removable ? (removingAdmin === email
         ? `<span class="act-row"><button class="btn-sm" data-act="keepadmin">Keep</button><button class="btn-sm danger" data-adminrm="${esc(email)}">Remove</button></span>`
-        : `<button type="button" class="x" data-adminask="${esc(email)}" aria-label="Remove ${esc(email)}">${X}</button>`) : ''}
+        : `<button type="button" class="btn-sm" data-adminreset="${esc(email)}">Reset password</button><button type="button" class="x" data-adminask="${esc(email)}" aria-label="Remove ${esc(email)}">${X}</button>`) : ''}
     </div>`;
   pane.innerHTML = `
     <div class="box">
@@ -364,10 +364,30 @@ function renderAdmins(err) {
     <form class="box" id="adminAdd" novalidate>
       <h2>Add an admin</h2>
       <label class="field"><span>Their email</span><input id="aEmail" type="email" autocomplete="off" placeholder="friend@gmail.com" maxlength="120"></label>
+      <label class="field"><span>Password for them <small>at least 8 characters</small></span><input id="aPass" type="text" autocomplete="new-password" spellcheck="false" maxlength="64" placeholder="e.g. Orbit-4821-fish"></label>
       <div class="form-err" id="aErr" role="alert"></div>
-      <button class="btn-gold" type="submit" id="aBtn">Add admin</button>
-      <div class="notice">After adding them here, create their login: open <a href="${usersUrl}" target="_blank" rel="noopener" style="color:var(--gold)">Firebase → Authentication → Users</a>, press <b>Add user</b>, and use the same email with a password. Then send them this page's link and their password.</div>
+      <button class="btn-gold" type="submit" id="aBtn">Create login &amp; add admin</button>
+      <div class="notice">Send them <b>${esc(location.origin)}/admin.html</b>, their email and this password, privately. They can choose their own password later: press <b>Reset password</b> next to their name and Firebase emails them a link. If the email already has a login, it is just added to the list and keeps its old password. <a href="${usersUrl}" target="_blank" rel="noopener" style="color:var(--gold)">All logins in Firebase</a></div>
     </form>`;
+}
+// Creates the login on a separate Firebase connection, so the admin doing it stays signed in.
+async function createLogin(email, password) {
+  const { appMod, authMod } = fb;
+  const second = appMod.getApps().find((a) => a.name === 'create-login') || appMod.initializeApp(firebaseConfig, 'create-login');
+  const secondAuth = authMod.getAuth(second);
+  await authMod.setPersistence(secondAuth, authMod.inMemoryPersistence);
+  await authMod.createUserWithEmailAndPassword(secondAuth, email, password);
+  await authMod.signOut(secondAuth);
+}
+function loginError(e) {
+  const c = (e && e.code) || '';
+  if (c === 'auth/operation-not-allowed' || c === 'auth/admin-restricted-operation')
+    return 'Firebase is not allowing new logins. In Firebase open Authentication → Settings → User actions, tick "Enable create (sign-up)" and Save.';
+  if (c === 'auth/weak-password' || c === 'auth/password-does-not-meet-requirements') return 'That password is too weak. Use at least 8 characters with letters and numbers.';
+  if (c === 'auth/invalid-email') return 'That does not look like an email address.';
+  if (c === 'auth/too-many-requests') return 'Too many attempts. Wait a few minutes and try again.';
+  if (c === 'auth/network-request-failed') return 'No internet connection. Try again.';
+  return 'Could not create the login. Try again.';
 }
 async function saveAdmins(list, okMsg) {
   const { fs, db } = fb;
@@ -378,15 +398,30 @@ async function saveAdmins(list, okMsg) {
   } catch (e) { toast(failMsg(e), true); return false; }
 }
 async function addAdmin() {
-  const email = $('aEmail').value.trim().toLowerCase();
+  const email = $('aEmail').value.trim().toLowerCase(), pass = $('aPass').value;
   const err = !email ? 'Enter an email.' : !isEmail(email) ? 'That does not look like an email address.'
     : (email === MAIN_OWNER || admins.includes(email)) ? 'This email is already an admin.'
-    : admins.length >= 25 ? 'The admin list is full (25). Remove someone first.' : '';
+    : admins.length >= 25 ? 'The admin list is full (25). Remove someone first.'
+    : pass.length < 8 ? 'Enter a password of at least 8 characters.' : '';
   if (err) { $('aErr').textContent = err; return; }
-  $('aBtn').disabled = true; $('aBtn').textContent = 'Adding…';
-  const ok = await saveAdmins([...admins, email], email + ' is now an admin');
-  if (ok) { $('aEmail').value = ''; $('aErr').textContent = ''; }
-  if ($('aBtn')) { $('aBtn').disabled = false; $('aBtn').textContent = 'Add admin'; }
+  const done = () => { if ($('aBtn')) { $('aBtn').disabled = false; $('aBtn').textContent = 'Create login & add admin'; } };
+  $('aErr').textContent = ''; $('aBtn').disabled = true; $('aBtn').textContent = 'Creating login…';
+  let existed = false;
+  try { await createLogin(email, pass); }
+  catch (e) {
+    if (e && e.code === 'auth/email-already-in-use') existed = true;
+    else { console.warn(e); $('aErr').textContent = loginError(e); done(); return; }
+  }
+  const ok = await saveAdmins([...admins, email],
+    existed ? email + ' already had a login. Added as admin with their existing password.' : 'Login created. ' + email + ' is now an admin');
+  if (ok) { $('aEmail').value = ''; $('aPass').value = ''; }
+  done();
+}
+async function resetPassword(email, btn) {
+  btn.disabled = true;
+  try { await fb.authMod.sendPasswordResetEmail(fb.auth, email); toast('Password reset email sent to ' + email); }
+  catch (e) { toast(loginError(e).replace('create the login', 'send the reset email'), true); }
+  btn.disabled = false;
 }
 
 /* ====== events ====== */
@@ -411,6 +446,7 @@ document.addEventListener('click', async (e) => {
   if (t.dataset.sopen) { readSettings(); settingsDraft.open = settingsDraft.open === false; settingsDirty = true; renderDelivery(); return; }
   if (t.dataset.arm) { readSettings(); settingsDraft.areas.splice(+t.dataset.arm, 1); settingsDirty = true; renderDelivery(); return; }
   if (t.dataset.srm) { readSettings(); settingsDraft.slots.splice(+t.dataset.srm, 1); settingsDirty = true; renderDelivery(); return; }
+  if (t.dataset.adminreset) { resetPassword(t.dataset.adminreset, t); return; }
   if (t.dataset.adminask) { removingAdmin = t.dataset.adminask; renderAdmins(); return; }
   if (t.dataset.adminrm) {
     const email = t.dataset.adminrm; t.disabled = true;

@@ -27,7 +27,7 @@ It runs on **Google Firebase** on the free **Spark** plan. You need a Google acc
 2. Under **Sign-in method** choose **Email/Password**, switch it on, and **Save**.
 3. Open the **Users** tab → **Add user**. Enter the shop owner's email and a strong password. This is the login for `/admin`.
 
-4. Open the **Settings** tab → **User actions** and untick **Enable create (sign-up)**, then **Save**. This stops anyone else from creating an account. Only the owner's email can change the shop in any case, because the security rules in step 5 check it.
+4. Open the **Settings** tab → **User actions** and make sure **Enable create (sign-up)** is **ticked**, then **Save**. The dashboard's Admins tab needs it to create logins for other admins. Only the main owner and emails on the admin list can see or change anything, because the security rules check it.
 
 ## 4. Connect the website to your project
 
@@ -95,7 +95,10 @@ You're live. Share the site address with customers.
 | Pick the home-page "Catch of the day" | **Products** → **Edit** → tick "Catch of the day" |
 | Stop orders for the day | **Delivery** → **Orders** switch off → **Save changes** |
 | Change the WhatsApp number, areas, charges, timings or banner | **Delivery** → **Save changes** |
-| Add or remove an admin | **Admins** → type their email → **Add admin**, then create their login in Firebase → **Authentication → Users → Add user** with the same email |
+| Add an admin | **Admins** → their email and a password → **Create login & add admin**. Send them the admin link, email and password privately. |
+| Remove an admin, or send them a password reset | **Admins** → ✕ or **Reset password** next to their name |
+
+Creating logins from the Admins tab needs Firebase → **Authentication → Settings → User actions → Enable create (sign-up)** switched **on**. Anyone could then make an account, but only emails on the admin list can see or change anything; everyone else sees "Not an admin".
 
 The main owner email is written in two places: `mainOwner()` in `firestore.rules` and `MAIN_OWNER` in `public/js/admin.js`. That person is always an admin and cannot be removed from the dashboard. Everyone else is managed on the **Admins** tab.
 

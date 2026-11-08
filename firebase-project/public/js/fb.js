@@ -17,7 +17,7 @@ export async function firebase() {
       import(SDK + 'firebase-auth.js')
     ]);
     const app = appMod.initializeApp(firebaseConfig);
-    cache = { app, fs, authMod, db: fs.getFirestore(app), auth: authMod.getAuth(app) };
+    cache = { app, appMod, fs, authMod, db: fs.getFirestore(app), auth: authMod.getAuth(app) };
     return cache;
   } catch (e) {
     console.warn('Firebase unavailable, using built-in catalogue', e);
