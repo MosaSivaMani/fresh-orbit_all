@@ -20,7 +20,6 @@ export const DEFAULT_SETTINGS = {
   open: true,
   banner: 'ఈరోజు పులస వచ్చింది! · Pulasa arrived today',
   freeAbove: 999,
-  minOrder: 300,
   hours: '7 AM – 9 PM',
   slots: ['7 – 10 AM', '12 – 3 PM', '5 – 8 PM'],
   areas: [

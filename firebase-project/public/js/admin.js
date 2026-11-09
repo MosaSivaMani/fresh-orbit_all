@@ -405,9 +405,7 @@ function editorHTML() {
   const d = draft, isNew = editing === '__new';
   return `<form class="editor" id="pEditor" novalidate>
     <div class="full row-between"><h3 class="serif" style="margin:0;font-size:24px;font-weight:400">${isNew ? 'New product' : 'Edit ' + esc(d.en)}</h3></div>
-    <div class="full photo"><div class="th" id="pPhoto">${vis(d)}</div>
-      <div style="display:flex;flex-direction:column;gap:6px"><label class="btn-sm" style="cursor:pointer">Upload photo<input type="file" id="pFile" accept="image/*" class="sr"></label>
-      ${d.img ? '<button type="button" class="btn-sm" data-act="rmphoto" style="border:0;height:36px;color:var(--muted)">Remove photo</button>' : ''}</div></div>
+    <div class="full" id="pPhotos">${photosHTML()}</div>
     <label class="field"><span>Name (English)</span><input id="pEn" maxlength="60" value="${esc(d.en)}" required></label>
     <label class="field"><span>Name (Telugu)</span><input id="pTe" class="te" maxlength="60" value="${esc(d.te)}"></label>
     <label class="field"><span>Category</span><select id="pCat">${CATS.filter((c) => c.id !== 'all').map((c) => `<option value="${c.id}" ${c.id === d.cat ? 'selected' : ''}>${esc(c.en)}</option>`).join('')}</select></label>
@@ -425,6 +423,37 @@ function editorHTML() {
       <span class="act-row"><button type="button" class="btn-sm" data-act="cancel">Cancel</button><button type="submit" class="btn-sm gold" id="pSave">Save product</button></span>
     </div>
   </form>`;
+}
+// Photos: draft.photos[0] is the main photo (kept on the product, shown on the card);
+// the rest are kept in photos/{productId} and only downloaded when a customer opens the product.
+const MAX_PHOTOS = 6, EXTRAS_MAX_CHARS = 950000;
+function photosHTML() {
+  const d = draft, list = d.photos || [];
+  if (!d.photosReady) return `<span class="label">Photos</span><div class="notice">${d.photosErr ? 'Could not load this product’s extra photos. Close and press Edit again.' : 'Loading photos…'}</div>`;
+  return `<span class="label">Photos <small>${list.length} of ${MAX_PHOTOS} · the first one is shown on the product card</small></span>
+    <div class="pgrid">${list.map((src, i) => `<div class="pcell"><img src="${esc(src)}" alt="Photo ${i + 1}">
+        ${i === 0 ? '<span class="pmain">Main</span>' : `<button type="button" class="pset" data-pmain="${i}">Make main</button>`}
+        <button type="button" class="x" data-prm="${i}" aria-label="Remove photo ${i + 1}">${X}</button></div>`).join('')}
+      ${list.length < MAX_PHOTOS ? `<label class="padd">${d.photosBusy ? 'Adding…' : '+ Add photos'}<input type="file" id="pFile" accept="image/*" multiple class="sr"${d.photosBusy ? ' disabled' : ''}></label>` : ''}
+    </div>`;
+}
+function redrawPhotos() { if ($('pPhotos')) $('pPhotos').innerHTML = photosHTML(); }
+async function loadExtraPhotos(id, forDraft) {
+  try {
+    const snap = await fb.fs.getDoc(fb.fs.doc(fb.db, 'photos', id));
+    if (draft !== forDraft) return;
+    const imgs = snap.exists() && Array.isArray(snap.data().imgs) ? snap.data().imgs.filter((x) => typeof x === 'string' && x) : [];
+    forDraft.photos.push(...imgs); forDraft.photosReady = true;
+  } catch (e) { if (draft !== forDraft) return; forDraft.photosErr = true; }
+  redrawPhotos();
+}
+function startDraft(p) {
+  const d = structuredClone(p);
+  d.photos = p.img ? [p.img] : [];
+  d.origImg = p.img || ''; d.origExtras = Number(p.photoCount) || 0;
+  d.photosReady = !d.origExtras;
+  draft = d;
+  if (!d.photosReady) loadExtraPhotos(p.id, d);
 }
 function readEditor() {
   if (!draft || !$('pEn')) return;
@@ -444,7 +473,10 @@ async function saveEditor() {
   if (!draft) return;
   readEditor();
   const err = !draft.en ? 'Enter the English name.' : !(draft.price > 0) ? 'Enter a price per kg.' : !draft.weights.length ? 'Enter at least one weight, e.g. 1.' : '';
-  if (err) { $('pErr').textContent = err; return; }
+  const extras = (draft.photos || []).slice(1);
+  const err2 = err || (!draft.photosReady ? 'Wait for the photos to finish loading.' : draft.photosBusy ? 'Wait for the photos to finish adding.'
+    : extras.reduce((n, x) => n + x.length, 0) > EXTRAS_MAX_CHARS ? 'The photos are too large together. Remove one and try again.' : '');
+  if (err2) { $('pErr').textContent = err2; return; }
   const { fs, db } = fb;
   const isNew = editing === '__new';
   if (!isNew && !products.some((p) => p.id === editing)) { productGone(); return; }
@@ -452,12 +484,15 @@ async function saveEditor() {
   const name = draft.en;
   // Only the fields this editor owns, so another admin's changes to other fields are kept.
   const fields = { en: draft.en, te: draft.te, cat: draft.cat, price: Math.round(draft.price), desc: draft.desc, cuts: draft.cuts, weights: draft.weights,
-    inStock: draft.inStock, best: draft.best, featured: draft.featured, img: draft.img || '', hero: draft.hero || '' };
+    inStock: draft.inStock, best: draft.best, featured: draft.featured,
+    img: draft.photos[0] || '', hero: draft.photos[0] && draft.photos[0] === draft.origImg ? (draft.hero || '') : '', photoCount: extras.length };
   $('pSave').disabled = true; $('pSave').textContent = 'Saving…';
   try {
     const batch = fs.writeBatch(db);
     if (isNew) batch.set(fs.doc(db, 'products', id), { ...fields, order: products.reduce((m, p) => Math.max(m, p.order || 0), 0) + 1 });
     else batch.update(fs.doc(db, 'products', id), fields);
+    if (extras.length) batch.set(fs.doc(db, 'photos', id), { imgs: extras });
+    else if (draft.origExtras) batch.delete(fs.doc(db, 'photos', id));
     // Only one "Catch of the day" at a time.
     if (fields.featured) products.filter((p) => p.featured && p.id !== id).forEach((p) => batch.update(fs.doc(db, 'products', p.id), { featured: false }));
     await batch.commit();
@@ -480,7 +515,7 @@ function resizeImage(file) {
       ctx.drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url);
       let q = 0.8, out = c.toDataURL('image/jpeg', q);
-      while (out.length > 700000 && q > 0.4) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+      while (out.length > 180000 && q > 0.4) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
       resolve(out);
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
@@ -529,9 +564,8 @@ function renderDelivery() {
       <div class="list-edit" id="areasEd">${s.areas.map((a, i) => `<div class="li"><input aria-label="Area name" data-aname="${i}" value="${esc(a.name)}"><label class="money"><span>₹</span><input inputmode="decimal" aria-label="Charge for ${esc(a.name)}" data-afee="${i}" value="${esc(a.fee)}"></label><button type="button" class="x" data-arm="${i}" aria-label="Remove ${esc(a.name)}">${X}</button></div>`).join('')}</div>
       <button type="button" class="dashed" data-act="addarea">+ Add area</button>
     </div>
-    <div class="box"><h2>Order rules</h2><div class="grid2">
-      <label class="field"><span>Free delivery above (₹)</span><input id="sFree" inputmode="decimal" value="${esc(s.freeAbove)}"></label>
-      <label class="field"><span>Minimum order (₹)</span><input id="sMin" inputmode="decimal" value="${esc(s.minOrder)}"></label></div></div>
+    <div class="box"><h2>Order rules</h2>
+      <label class="field"><span>Free delivery above (₹)</span><input id="sFree" inputmode="decimal" value="${esc(s.freeAbove)}"></label></div>
     <div class="box"><h2>Hours &amp; delivery slots</h2>
       <label class="field"><span>Opening hours</span><input id="sHours" maxlength="40" value="${esc(s.hours)}"></label>
       <div class="list-edit" id="slotsEd">${s.slots.map((t, i) => `<div class="li"><input aria-label="Delivery slot" data-slot="${i}" value="${esc(t)}"><button type="button" class="x" data-srm="${i}" aria-label="Remove slot ${esc(t)}">${X}</button></div>`).join('')}</div>
@@ -546,7 +580,6 @@ function readSettings() {
   s.upi = v('sUpi');
   s.banner = v('sBanner'); s.hours = v('sHours');
   s.freeAbove = money(v('sFree'));
-  s.minOrder = money(v('sMin'));
   document.querySelectorAll('[data-aname]').forEach((el) => { s.areas[+el.dataset.aname].name = el.value.trim(); });
   document.querySelectorAll('[data-afee]').forEach((el) => { s.areas[+el.dataset.afee].fee = money(el.value); });
   document.querySelectorAll('[data-slot]').forEach((el) => { s.slots[+el.dataset.slot] = el.value.trim(); });
@@ -561,6 +594,7 @@ async function saveSettings() {
   if (!s.areas.length) { toast('Add at least one delivery area.', true); return; }
   if (!s.slots.length) { toast('Add at least one delivery slot.', true); return; }
   try {
+    delete s.minOrder; // no minimum order any more
     await fb.fs.setDoc(fb.fs.doc(fb.db, 'shop', 'settings'), s);
     settingsDirty = false; toast('Delivery settings saved'); renderDelivery();
   } catch (e) { toast(failMsg(e), true); }
@@ -686,7 +720,7 @@ document.addEventListener('click', async (e) => {
   if (t.dataset.edit) {
     const id = t.dataset.edit;
     if (editing === id) { editing = null; draft = null; }
-    else { editing = id; draft = structuredClone(products.find((p) => p.id === id)); }
+    else { editing = id; startDraft(products.find((p) => p.id === id)); }
     confirmDelete = false; renderProducts(); return;
   }
   if (t.dataset.sopen) { readSettings(); settingsDraft.open = settingsDraft.open === false; settingsDirty = true; renderDelivery(); return; }
@@ -702,19 +736,26 @@ document.addEventListener('click', async (e) => {
   const act = t.dataset.act;
   if (act === 'keepadmin') { removingAdmin = ''; renderAdmins(); return; }
   if (act === 'seed') { t.disabled = true; t.textContent = 'Loading…'; await seed(); return; }
-  if (act === 'new') { editing = '__new'; draft = { en: '', te: '', cat: 'fish', price: '', desc: '', cuts: ['Cleaned', 'Whole'], weights: [0.5, 1, 1.5, 2], inStock: true, best: false, featured: false, img: '' }; confirmDelete = false; renderProducts(); $('pEn') && $('pEn').focus(); return; }
+  if (act === 'new') { editing = '__new'; draft = { en: '', te: '', cat: 'fish', price: '', desc: '', cuts: ['Cleaned', 'Whole'], weights: [0.5, 1, 1.5, 2], inStock: true, best: false, featured: false, img: '', photos: [], photosReady: true, origImg: '', origExtras: 0 }; confirmDelete = false; renderProducts(); $('pEn') && $('pEn').focus(); return; }
   if (act === 'cancel') { editing = null; draft = null; confirmDelete = false; renderProducts(); return; }
   if (act === 'askdelete') { readEditor(); confirmDelete = true; renderProducts(); return; }
   if (act === 'nodelete') { readEditor(); confirmDelete = false; renderProducts(); return; }
   if (act === 'dodelete') {
     // Close the editor first, so our own delete isn't reported as "deleted by another admin".
     const id = editing, name = draft ? draft.en : 'Product';
+    const hadExtras = !!(products.find((p) => p.id === id) || {}).photoCount;
     editing = null; draft = null; confirmDelete = false; renderProducts();
-    try { await fb.fs.deleteDoc(fb.fs.doc(fb.db, 'products', id)); toast(name + ' deleted'); }
+    try {
+      const batch = fb.fs.writeBatch(fb.db);
+      batch.delete(fb.fs.doc(fb.db, 'products', id));
+      if (hadExtras) batch.delete(fb.fs.doc(fb.db, 'photos', id));
+      await batch.commit(); toast(name + ' deleted');
+    }
     catch (err) { toast(failMsg(err), true); }
     return;
   }
-  if (act === 'rmphoto') { readEditor(); draft.img = ''; draft.hero = ''; renderProducts(); return; }
+  if (t.dataset.prm && draft) { draft.photos.splice(+t.dataset.prm, 1); redrawPhotos(); return; }
+  if (t.dataset.pmain && draft) { const [x] = draft.photos.splice(+t.dataset.pmain, 1); draft.photos.unshift(x); redrawPhotos(); return; }
   if (act === 'addarea') { readSettings(); settingsDraft.areas.push({ name: '', fee: 30 }); settingsDirty = true; renderDelivery(); const ins = document.querySelectorAll('[data-aname]'); ins[ins.length - 1].focus(); return; }
   if (act === 'addslot') { readSettings(); settingsDraft.slots.push(''); settingsDirty = true; renderDelivery(); const ins = document.querySelectorAll('[data-slot]'); ins[ins.length - 1].focus(); return; }
   if (act === 'savesettings') { saveSettings(); return; }
@@ -741,16 +782,20 @@ document.addEventListener('change', async (e) => {
     try { await fb.fs.updateDoc(fb.fs.doc(fb.db, 'products', p.id), { price: v }); toast(`Saved · ${p.en} ${rupee(v)}/kg`); }
     catch (err) { el.value = p.price; toast(failMsg(err), true); }
   }
-  if (el.id === 'pFile' && el.files && el.files[0]) {
-    if (!draft) return;
-    readEditor();
-    const forDraft = draft;
-    try {
-      const img = await resizeImage(el.files[0]);
-      if (!draft || draft !== forDraft) return; // editor was closed (or another product opened) while resizing
-      draft.img = img; draft.hero = '';
-      if ($('pPhoto')) $('pPhoto').innerHTML = vis(draft);
-    } catch (err) { if (draft === forDraft && $('pErr')) $('pErr').textContent = 'That file is not a photo we can read. Try a JPG or PNG.'; }
+  if (el.id === 'pFile' && el.files && el.files.length) {
+    if (!draft || !draft.photosReady || draft.photosBusy) return;
+    const forDraft = draft, room = MAX_PHOTOS - draft.photos.length;
+    const files = [...el.files].slice(0, Math.max(0, room));
+    forDraft.photosBusy = true; redrawPhotos();
+    let bad = 0;
+    for (const f of files) {
+      try { const img = await resizeImage(f); if (draft !== forDraft) return; forDraft.photos.push(img); }
+      catch (err) { bad++; }
+    }
+    if (draft !== forDraft) return; // editor was closed (or another product opened) while resizing
+    forDraft.photosBusy = false; redrawPhotos();
+    if ($('pErr')) $('pErr').textContent = bad ? 'Some files are not photos we can read. Try JPG or PNG.'
+      : el.files.length > files.length ? `Only ${MAX_PHOTOS} photos per product, so ${el.files.length - files.length} were not added.` : '';
   }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.price) e.target.blur(); });

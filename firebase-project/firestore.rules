@@ -50,6 +50,16 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    // Extra product photos (up to 5 per product; the main photo is on the product).
+    match /photos/{productId} {
+      allow read: if true;
+      allow delete: if isOwner();
+      allow create, update: if isOwner()
+        && request.resource.data.keys().hasOnly(['imgs'])
+        && request.resource.data.imgs is list
+        && request.resource.data.imgs.size() <= 5;
+    }
+
     // Orders: any customer can place one; only the owner can see or change them.
     match /orders/{orderId} {
       allow create: if validNewOrder(request.resource.data);

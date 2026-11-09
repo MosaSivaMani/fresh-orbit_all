@@ -87,7 +87,7 @@ function renderGroups() {
           : inq ? `<button class="in-cart" data-open="${esc(p.id)}" aria-label="${esc(p.en)} in cart, ${kg(inq)}">${kg(inq)} ✓</button>`
           : `<button class="add" data-open="${esc(p.id)}" aria-label="Add ${esc(p.en)}">${plus}</button>`;
         return `<article class="card${out ? ' is-out' : ''}">
-          <button class="ph" ${out ? 'disabled' : `data-open="${esc(p.id)}"`} aria-label="${out ? esc(p.en) + ', out of stock' : 'View ' + esc(p.en)}">${visual(p)}${p.best && !out ? '<span class="best">Bestseller</span>' : ''}${out ? '<span class="out">Out of stock</span>' : ''}</button>
+          <button class="ph" ${out ? 'disabled' : `data-open="${esc(p.id)}"`} aria-label="${out ? esc(p.en) + ', out of stock' : 'View ' + esc(p.en)}">${visual(p)}${p.best && !out ? '<span class="best">Bestseller</span>' : ''}${p.photoCount > 0 && p.img && !out ? `<span class="pc" aria-hidden="true">📷 ${Number(p.photoCount) + 1}</span>` : ''}${out ? '<span class="out">Out of stock</span>' : ''}</button>
           <div class="meta"><b class="${lang === 'te' ? 'te' : ''}">${esc(nameP(p))}</b><span class="${lang === 'en' ? 'te' : ''}" style="font-size:14px;color:var(--muted)">${esc(nameS(p))}</span></div>
           <div class="foot"><span class="price-tag">${rupee(p.price)}<small> /kg</small></span>${action}</div>
         </article>`;
@@ -102,7 +102,6 @@ function renderSettings() {
   $('closedNote').hidden = SETTINGS.open !== false;
   $('factHours').textContent = SETTINGS.hours;
   $('ruleFree').textContent = 'Free delivery above ' + rupee(SETTINGS.freeAbove);
-  $('ruleMin').textContent = 'Minimum order ' + rupee(SETTINGS.minOrder);
   $('ruleHours').textContent = 'Open ' + SETTINGS.hours;
   $('ruleSlots').textContent = SETTINGS.slots.length ? 'Slots: ' + SETTINGS.slots.join(' · ') : '';
   $('waShown').textContent = waValid() ? waPretty() : '';
@@ -160,7 +159,8 @@ function openProduct(id) {
   if (!p || p.inStock === false) return;
   const w = p.weights && p.weights.length ? p.weights : [1];
   mState = { id, cut: p.cuts && p.cuts.length ? p.cuts[0] : '', w: p.cat === 'prawn' && p.id !== 'crab' ? 0 : Math.max(0, w.indexOf(1)) };
-  $('mImg').innerHTML = p.hero ? `<img src="${esc(p.hero)}" alt="${esc(p.en)}">` : visual(p);
+  showGallery(p, extraPhotos[p.id] || []);
+  if (p.photoCount > 0 && !extraPhotos[p.id]) loadExtraPhotos(p);
   $('mCat').textContent = (CATS.find((c) => c.id === p.cat) || CATS[0]).en;
   $('mName').textContent = nameP(p); $('mName').className = 'serif' + (lang === 'te' ? ' te' : '');
   $('mTe').textContent = nameS(p); $('mTe').className = lang === 'en' ? 'te' : '';
@@ -170,6 +170,33 @@ function openProduct(id) {
   $('mCutWrap').hidden = !(p.cuts && p.cuts.length);
   renderModalOpts();
   openLayer($('modal'));
+}
+// Product gallery: the main photo comes with the product; extra photos live in photos/{id}
+// and are fetched only when the product is opened.
+const extraPhotos = {};
+async function loadExtraPhotos(p) {
+  try {
+    const f = fb || await firebase();
+    const snap = await f.fs.getDoc(f.fs.doc(f.db, 'photos', p.id));
+    const imgs = snap.exists() && Array.isArray(snap.data().imgs) ? snap.data().imgs.filter((x) => typeof x === 'string' && x) : [];
+    extraPhotos[p.id] = imgs;
+    if (mState && mState.id === p.id && !$('modal').hidden && imgs.length) showGallery(p, imgs);
+  } catch (e) { /* main photo is still shown */ }
+}
+function showGallery(p, extras) {
+  const main = p.hero || p.img, list = main ? [main, ...extras] : [];
+  const box = $('mImg');
+  if (list.length < 2) { box.innerHTML = p.hero ? `<img src="${esc(p.hero)}" alt="${esc(p.en)}">` : visual(p); return; }
+  box.innerHTML = `<div class="gal" id="gal" tabindex="0" aria-label="${esc(p.en)} photos, swipe to see more">${list.map((src, i) =>
+      `<img src="${esc(src)}" alt="${esc(p.en)}, photo ${i + 1} of ${list.length}"${i ? ' loading="lazy"' : ''}>`).join('')}</div>
+    <div class="gal-dots" aria-hidden="true">${list.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>
+    <button type="button" class="gal-nav prev" data-gal="-1" aria-label="Previous photo">‹</button>
+    <button type="button" class="gal-nav next" data-gal="1" aria-label="Next photo">›</button>`;
+  const gal = $('gal'), dots = box.querySelectorAll('.gal-dots i');
+  gal.addEventListener('scroll', () => {
+    const i = Math.round(gal.scrollLeft / Math.max(1, gal.clientWidth));
+    dots.forEach((d, k) => d.classList.toggle('on', k === i));
+  }, { passive: true });
 }
 function weightsOf(p) { return p.weights && p.weights.length ? p.weights : [1]; }
 function renderModalOpts() {
@@ -221,14 +248,12 @@ const dayNow = () => !slotsFor('today').length ? 'tomorrow' : form.day === 'tomo
 
 // Anything that stops the cart from being sent. Empty string means OK.
 function cartProblem() {
-  const s = subtotal();
   if (SETTINGS.open === false) return 'The shop is not taking orders right now. Please check back later.';
   if (!waValid()) return 'Online orders are paused: the shop’s WhatsApp number is not set up. Please try again later.';
   if (goneLines().length) return productsReady ? 'Remove items that are no longer available to continue.' : 'Checking your cart against today’s products…';
   if (!liveCart().length) return 'Your cart is empty. Add something fresh first.';
   if (liveCart().length > 30) return 'Up to 30 items per order. Please remove some.';
   if (outLines().length) return 'Remove out-of-stock items to continue.';
-  if (s < SETTINGS.minOrder) return `Minimum order is ${rupee(SETTINGS.minOrder)}. Add ${rupee(SETTINGS.minOrder - s)} more.`;
   return '';
 }
 function summaryHTML(withArea) {
@@ -545,6 +570,7 @@ document.addEventListener('click', (e) => {
   const t = e.target.closest('button,a'); if (!t || t.disabled) return;
   if (t.dataset.cat) { cat = t.dataset.cat; renderCats(); renderGroups(); return; }
   if (t.dataset.open) { openProduct(t.dataset.open); return; }
+  if (t.dataset.gal) { const g = $('gal'); if (g) g.scrollBy({ left: +t.dataset.gal * g.clientWidth, behavior: 'smooth' }); return; }
   if (t.dataset.cut) { mState.cut = t.dataset.cut; renderModalOpts(); return; }
   if (t.dataset.w) { mState.w = +t.dataset.w; renderModalOpts(); return; }
   if (t.dataset.rm) { const i = +t.dataset.rm; if (cart[i]) cart.splice(i, 1); save(); renderDrawer(); renderGroups(); renderBar(); return; }
