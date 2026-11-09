@@ -9,6 +9,16 @@ let fb = null;
 let settingsState = 'loading';   // 'loading' until the settings snapshot arrives, then 'live'; 'fallback' if Firebase is unavailable
 let productsReady = false;       // true once products came from Firestore or the built-in catalogue was definitively chosen
 
+// Show the last prices/products this phone saw (instead of the built-in starting catalogue)
+// while today's arrive, so customers never see old prices flash. First visit: placeholders.
+const cacheGet = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+const cachePut = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { try { localStorage.removeItem(k); } catch (e2) {} } };
+const cachedSettings = cacheGet('fo_c_settings'), cachedProducts = cacheGet('fo_c_products');
+if (cachedSettings && typeof cachedSettings === 'object') SETTINGS = { ...DEFAULT_SETTINGS, ...cachedSettings };
+if (Array.isArray(cachedProducts) && cachedProducts.length) PRODUCTS = cachedProducts;
+let waitP = !(Array.isArray(cachedProducts) && cachedProducts.length);   // nothing to show yet
+let waitS = !(cachedSettings && typeof cachedSettings === 'object');
+
 const I18N = {
   en: {
     navShop: 'Shop', navHow: 'How it works', navDelivery: 'Delivery areas',
@@ -70,6 +80,7 @@ function renderCats() {
   $('cats').innerHTML = CATS.map((c) => `<button class="cat" aria-pressed="${c.id === cat}" data-cat="${c.id}"><b class="${lang === 'te' ? 'te' : ''}">${lang === 'en' ? c.en : c.te}</b><span class="${lang === 'en' ? 'te' : ''}">${lang === 'en' ? c.te : c.en}</span></button>`).join('');
 }
 function renderGroups() {
+  if (waitP) { $('groups').innerHTML = `<div class="grid" aria-busy="true" aria-label="Loading products">${'<article class="card skel"><div class="ph"></div><div class="meta"><b>&nbsp;</b></div></article>'.repeat(6)}</div>`; return; }
   const q = query.trim().toLowerCase();
   const match = (p) => !q || [p.en, p.te, p.id].some((s) => String(s || '').toLowerCase().includes(q)) || (q.startsWith('kon') && p.id === 'seer') || (q.startsWith('roy') && p.cat === 'prawn');
   const shown = CATS.filter((c) => c.id !== 'all' && (cat === 'all' || cat === c.id));
@@ -96,6 +107,7 @@ function renderGroups() {
   $('groups').innerHTML = total ? html : `<div class="empty">No products match “${esc(query)}”. Try “prawns”, “pomfret” or “chicken”.</div>`;
 }
 function renderSettings() {
+  if (waitS) { $('areaList').innerHTML = '<div><span>Loading…</span><b></b></div>'; return; }
   $('areaList').innerHTML = SETTINGS.areas.map((a) => `<div><span>${esc(a.name)}</span><b>${rupee(a.fee)}</b></div>`).join('');
   $('announce').hidden = !SETTINGS.banner;
   $('announceText').textContent = SETTINGS.banner || '';
@@ -110,6 +122,8 @@ function renderSettings() {
 function renderFeature() {
   const f = PRODUCTS.find((p) => p.featured && p.inStock !== false && (p.hero || p.img)) || PRODUCTS.find((p) => p.inStock !== false && p.hero);
   const card = $('featureCard');
+  card.classList.toggle('is-loading', waitP);
+  if (waitP) return;
   if (!f) { card.hidden = true; return; }
   card.hidden = false;
   card.dataset.open = f.id;
@@ -643,6 +657,7 @@ const bootTimer = setTimeout(() => {
   let changed = false;
   if (settingsState === 'loading') { settingsState = 'fallback'; changed = true; }
   if (!productsReady) { productsReady = true; changed = true; }
+  if (waitP || waitS) { waitP = waitS = false; renderAll(); }
   if (changed) refreshDrawer();
 }, 8000);
 
@@ -657,20 +672,26 @@ const bootTimer = setTimeout(() => {
         if (!Array.isArray(SETTINGS.areas)) SETTINGS.areas = [];
         if (!Array.isArray(SETTINGS.slots)) SETTINGS.slots = [];
       }
-      settingsState = 'live';
+      settingsState = 'live'; waitS = false;
+      if (snap.exists()) cachePut('fo_c_settings', snap.data());
       renderAll();
     }, (e) => {
       console.warn('Settings unavailable', e);
       if (settingsState === 'loading') { settingsState = 'fallback'; refreshDrawer(); }
+      if (waitS) { waitS = false; renderAll(); }
     });
     fs.onSnapshot(fs.query(fs.collection(db, 'products'), fs.orderBy('order')), (snap) => {
       productsReady = true;
       // An empty collection keeps the built-in catalogue until the owner loads one.
       if (!snap.empty) PRODUCTS = snap.docs.map((d) => ({ cuts: [], weights: [1], ...d.data(), id: d.id }));
+      else PRODUCTS = structuredClone(DEFAULT_PRODUCTS);
+      waitP = false;
+      if (!snap.empty) cachePut('fo_c_products', PRODUCTS); else { try { localStorage.removeItem('fo_c_products'); } catch (e) {} }
       renderAll();
     }, (e) => {
       console.warn('Products unavailable', e);
       productsReady = true;
+      if (waitP) { waitP = false; renderAll(); }
       refreshDrawer();
     });
   } catch (e) {
@@ -678,6 +699,7 @@ const bootTimer = setTimeout(() => {
     clearTimeout(bootTimer);
     if (settingsState === 'loading') settingsState = 'fallback';
     productsReady = true;
+    if (waitP || waitS) { waitP = waitS = false; renderAll(); }
     refreshDrawer();
   }
 })();

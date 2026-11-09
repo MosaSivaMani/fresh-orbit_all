@@ -291,3 +291,9 @@ footer .wrap{padding-block:30px 110px;display:flex;flex-wrap:wrap;justify-conten
 .gal-nav.prev{left:10px}.gal-nav.next{right:10px}
 @media(hover:hover) and (pointer:fine){.gal-nav{display:flex}}
 .pc{position:absolute;right:9px;bottom:9px;font-size:11px;font-weight:700;background:rgba(10,14,20,0.7);color:#fff;padding:3px 7px;border-radius:6px}
+/* loading placeholders (first visit, before products arrive) */
+@keyframes fo-shimmer{0%{opacity:.55}50%{opacity:1}100%{opacity:.55}}
+.card.skel .ph,.card.skel .meta b{animation:fo-shimmer 1.4s ease-in-out infinite;background:var(--raised)}
+.card.skel .meta b{display:block;width:70%;height:16px;border-radius:6px;margin-top:10px}
+.feature.is-loading{animation:fo-shimmer 1.4s ease-in-out infinite;background:var(--raised)}
+.feature.is-loading>*{visibility:hidden}
